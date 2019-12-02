@@ -1,0 +1,21 @@
+file(GLOB BASE_SRC "*.cpp" "../../external/imgui/imgui.cpp" "../../external/imgui/imgui_draw.cpp")
+file(GLOB CURRENT_HEADERS "*.hpp" "*.h")
+set(VK_BASE vk_base)
+include_directories(${MAIN_DIR}/external)
+include_directories(${MAIN_DIR}/external/glm)
+include_directories(${MAIN_DIR}/external/gli)
+include_directories(${MAIN_DIR}/external/assimp)
+include_directories(${MAIN_DIR}/external/imgui)
+
+include_directories(${MAIN_DIR}/external/zlib)
+include_directories(${MAIN_DIR}/external/libjpeg-turbo)
+
+
+if(WIN32)
+    source_group("Include" FILES ${CURRENT_HEADERS})
+    add_library(${VK_BASE} STATIC ${BASE_SRC} ${CURRENT_HEADERS})
+    target_link_libraries(${VK_BASE} ${Vulkan_LIBRARY} ${ASSIMP_LIBRARIES})
+ else(WIN32)
+    add_library(${VK_BASE} STATIC ${BASE_SRC})
+    target_link_libraries(${VK_BASE} ${Vulkan_LIBRARY} ${ASSIMP_LIBRARIES} ${XCB_LIBRARIES} ${WAYLAND_CLIENT_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} z boost_thread boost_filesystem)
+endif(WIN32)
