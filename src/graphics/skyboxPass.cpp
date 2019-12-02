@@ -64,8 +64,8 @@ void SkyboxPass::createDescriptorsLayouts()
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo();
 
 	setLayoutBindings = {
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),	
-		
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
+
 		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1),						// FS Color
 	};
 	setLayoutCreateInfo = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
@@ -96,7 +96,7 @@ void SkyboxPass::buildCommandBuffer(VkCommandBuffer &drawCmdBuffer)
 	vkCmdBindDescriptorSets(drawCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
 	vkCmdBindVertexBuffers(drawCmdBuffer, 0, 1, &skyboxModel.vertices.buffer, offsets);
 	vkCmdBindIndexBuffer(drawCmdBuffer, skyboxModel.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
-	
+
 	vkCmdDrawIndexed(drawCmdBuffer, skyboxModel.indexCount, 1, 0, 0, 0);
 
 }
@@ -109,7 +109,7 @@ void SkyboxPass::createUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm
 		&uniformSkybox,
 		sizeof(uboVS)));
 	VK_CHECK_RESULT(uniformSkybox.map());
-	updateUniformBuffer(perspective,view);
+	updateUniformBuffer(perspective, view);
 }
 void SkyboxPass::updateUniformBuffer(glm::mat4 &perspective, glm::mat4 &view)
 {
