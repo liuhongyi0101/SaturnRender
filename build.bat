@@ -17,7 +17,7 @@ REM // limitations under the License.
 REM /////////////////////////////////////////////////////////////////////////////////////////////
 
 echo Preparing 'blade' solution...
-
+mkdir build
 cd build
 
 cmake.exe ..  -G "Visual Studio 15 2017 Win64"

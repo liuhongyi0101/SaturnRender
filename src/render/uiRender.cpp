@@ -27,8 +27,8 @@ void UiRender::createUi(vks::VulkanDevice *vulkanDevice, VkQueue queue, std::vec
 		// Load default shaders if not specified by example
 		if (overlayCreateInfo.shaders.size() == 0) {
 			overlayCreateInfo.shaders = {
-				loadShader(getAssetPath + "/base/uioverlay.vert.spv", VK_SHADER_STAGE_VERTEX_BIT,vulkanDevice->logicalDevice,shaderModules),
-				loadShader(getAssetPath + "/base/uioverlay.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT,vulkanDevice->logicalDevice,shaderModules),
+				loadShader(getAssetPath + "base/uioverlay.vert.spv", VK_SHADER_STAGE_VERTEX_BIT,vulkanDevice->logicalDevice,shaderModules),
+				loadShader(getAssetPath + "base/uioverlay.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT,vulkanDevice->logicalDevice,shaderModules),
 			};
 		}
 		UIOverlay = new vks::UIOverlay(overlayCreateInfo);

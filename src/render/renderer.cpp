@@ -25,7 +25,7 @@
 		models.skybox.loadFromFile(modelPath + "models/cube.obj", vdo->vertexLayout, 1.0f, vulkanDevice, queue);
 		for (auto file : filenames) {
 			vks::Model model;
-			model.loadFromFile(modelPath + "models/" + file, vdo->vertexLayout, OBJ_DIM * (file == "cerberus/cerberus.fbx" ? 1.0f : 1.0f), vulkanDevice, queue);
+			model.loadFromFile(modelPath + "models/" + file, vdo->vertexLayout,1.0, vulkanDevice, queue);
 			models.objects.push_back(model);
 		}
 		models.scenes.loadFromFile(modelPath + "models/samplescene.dae", vdo->vertexLayout, 0.25f, vulkanDevice, queue);
