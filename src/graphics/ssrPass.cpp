@@ -106,6 +106,27 @@ void SsrPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  height)
 	sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 	VK_CHECK_RESULT(vkCreateSampler(device, &sampler, nullptr, &colorSampler));
 }
+
+void SsrPass::createDescriptorsLayouts()
+{
+	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
+	VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo;
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo();
+
+
+	setLayoutBindings = {
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT || VK_SHADER_STAGE_FRAGMENT_BIT, 0),
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1),// position depth buffer
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2),// normalbuffer
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3),// colorbuffer
+	};
+	setLayoutCreateInfo = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
+	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &setLayoutCreateInfo, nullptr, &descriptorSetLayout));
+
+	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
+	VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
+
+}
 void SsrPass::createPipeline()
 {
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
@@ -138,33 +159,13 @@ void SsrPass::createPipeline()
 	colorBlendState.attachmentCount = static_cast<uint32_t>(blendAttachmentStates.size());
 	colorBlendState.pAttachments = blendAttachmentStates.data();
 
-	shaderStages[0] = loadShader(getAssetPath + std::string("ssao/ssr.vert.spv"), VK_SHADER_STAGE_VERTEX_BIT, device, shaderModules);
-	shaderStages[1] = loadShader(getAssetPath + std::string("ssao/ssr.frag.spv"), VK_SHADER_STAGE_FRAGMENT_BIT, device, shaderModules);
+	shaderStages[0] = loadShader(getAssetPath + std::string("ssr/ssr.vert.spv"), VK_SHADER_STAGE_VERTEX_BIT, device, shaderModules);
+	shaderStages[1] = loadShader(getAssetPath + std::string("ssr/ssr.frag.spv"), VK_SHADER_STAGE_FRAGMENT_BIT, device, shaderModules);
 
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipeline));
 
 }
-void SsrPass::createDescriptorsLayouts(VkDescriptorPool &descriptorPool)
-{
-	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
-	VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo;
-	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo();
-
-
-	setLayoutBindings = {
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT || VK_SHADER_STAGE_FRAGMENT_BIT, 0),
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1),// position depth buffer
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2),// normalbuffer
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3),// colorbuffer
-	};
-	setLayoutCreateInfo = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
-	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &setLayoutCreateInfo, nullptr, &descriptorSetLayout));
-
-	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
-	VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
-
-}
-void SsrPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool, VkDescriptorImageInfo &posTexDescriptor, VkDescriptorImageInfo &normalTexDescriptor, VkDescriptorImageInfo &colorTexDescriptor)
+void SsrPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool, std::vector<VkDescriptorImageInfo> &texDescriptor)
 {
 	VkDescriptorSetAllocateInfo descriptorAllocInfo = vks::initializers::descriptorSetAllocateInfo(descriptorPool, nullptr, 1);
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
@@ -172,14 +173,14 @@ void SsrPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool, VkDescriptor
 	VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &descriptorAllocInfo, &descriptorSet));
 	writeDescriptorSets = {
 		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.descriptor),
-		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1 , &posTexDescriptor),
-		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2 , &normalTexDescriptor),
-		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3 , &colorTexDescriptor),
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1 , &texDescriptor[0]),
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2 , &texDescriptor[1]),
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3 , &texDescriptor[2]),
 
 	};
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
 }
-void SsrPass::createUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm::mat4 &view, glm::mat4 &lightSpace)
+void SsrPass::createUniformBuffers(VkQueue queue, glm::mat4 &invPerspective)
 {
 	// Scene matrices
 	vulkanDevice->createBuffer(
@@ -188,36 +189,38 @@ void SsrPass::createUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm::m
 		&uniformBuffers,
 		sizeof(uboParams));
 
-	updateUniformBufferMatrices(perspective, view, lightSpace);
+	updateUniformBufferMatrices(invPerspective);
 
 }
 
-void SsrPass::updateUniformBufferMatrices(glm::mat4 &perspective, glm::mat4 &view, glm::mat4 &lightSpace)
+void SsrPass::updateUniformBufferMatrices(glm::mat4 &invPerspective)
 {
-	uboParams.projection = perspective;
-	uboParams.view = view;
-	uboParams.model = glm::mat4(1.0f);
-	uboParams.lightSpace = lightSpace;
+	glm::vec4 t4 = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+
+	glm::mat4 invp =  glm::inverse(invPerspective);
+
+	t4 = invp * t4;
+
+	t4.x /= t4.w;
+	t4.y /= t4.w;
+	t4.z /= t4.w;
+	t4.w /= t4.w;
+	uboParams.invProjection = invPerspective;
+	uboParams.uWorldExtent = glm::vec3(t4.x,t4.y,-t4.z);
 	VK_CHECK_RESULT(uniformBuffers.map());
 	uniformBuffers.copyTo(&uboParams, sizeof(uboParams));
 	uniformBuffers.unmap();
 }
 
-void SsrPass::buildCommandBuffer(VkCommandPool cmdPool)
+void SsrPass::buildCommandBuffer(VkCommandBuffer &cmdBuffer)
 {
-	VkDeviceSize offsets[1] = { 0 };
-	cmdBuffer = createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, false, cmdPool);
 
-	// Create a semaphore used to synchronize offscreen rendering and usage
-	VkSemaphoreCreateInfo semaphoreCreateInfo = vks::initializers::semaphoreCreateInfo();
-	VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphore));
-
+	
 	VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
 
 	// Clear values for all attachments written in the fragment sahder
 	std::vector<VkClearValue> clearValues(1);
 	clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-
 
 	VkRenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();
 	renderPassBeginInfo.renderPass = renderPass;
@@ -227,7 +230,7 @@ void SsrPass::buildCommandBuffer(VkCommandPool cmdPool)
 	renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassBeginInfo.pClearValues = clearValues.data();
 
-	VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
+	//VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
 
 	vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -242,5 +245,5 @@ void SsrPass::buildCommandBuffer(VkCommandPool cmdPool)
 
 	vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
 	vkCmdEndRenderPass(cmdBuffer);
-	VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
+
 }

@@ -7,11 +7,11 @@ public:
 
 	void createFramebuffersAndRenderPass(uint32_t width, uint32_t  height);
 	void createPipeline();
-	void createDescriptorsLayouts(VkDescriptorPool &descriptorPool);
-	void wirteDescriptorSets(VkDescriptorPool &descriptorPool, VkDescriptorImageInfo &posTexDescriptor, VkDescriptorImageInfo &normalTexDescriptor, VkDescriptorImageInfo &colorTexDescriptor);
-	void createUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm::mat4 &view, glm::mat4 &lightSpace);
-	void updateUniformBufferMatrices(glm::mat4 &perspective, glm::mat4 &view, glm::mat4 &lightSpace);
-	void buildCommandBuffer(VkCommandPool cmdPool);
+	void createDescriptorsLayouts();
+	void wirteDescriptorSets(VkDescriptorPool &descriptorPool, std::vector<VkDescriptorImageInfo> &texDescriptor);
+	void createUniformBuffers(VkQueue queue, glm::mat4 &invPerspective);
+	void updateUniformBufferMatrices(glm::mat4 &invPerspective);
+	void buildCommandBuffer(VkCommandBuffer& cmdBuffer);
 	~SsrPass();
 
 
@@ -20,10 +20,9 @@ public:
 	} ssrRtFrameBuffer;
 
 	struct UBOParams {
-		glm::mat4 projection;
-		glm::mat4 model;
-		glm::mat4 view;
-		glm::mat4 lightSpace;
+		glm::mat4 invProjection;
+		glm::vec3 uWorldExtent;
+	
 	} uboParams;
 
 	vks::Buffer uniformBuffers;

@@ -14,6 +14,7 @@
 #include "renderer/ssaoPass.h"
 #include "graphics/deferred.h"
 #include "graphics/skyboxPass.h"
+#include"graphics/ssrPass.h"
 #define FB_COLOR_FORMAT VK_FORMAT_R8G8B8A8_UNORM
 #define GRID_DIM 2
 #define OBJ_DIM 0.1f
@@ -52,18 +53,17 @@
 		std::shared_ptr<SsaoPass> ssaoPass;
 		std::shared_ptr<DeferredPass> deferredPass;
 		std::shared_ptr<SkyboxPass>  skyboxPass;
+		std::shared_ptr<SsrPass>  ssrPass;
 	protected:
 		
 		vks::Buffer uniformBuffer;
 	
-	
-		
 		glm::vec3 lightPos = glm::vec3();
-		float lightFOV = 45.0f;
-		// Keep depth range as small as possible
+		float lightFOV = 60.0f;
+	// Keep depth range as small as possible
 	// for better shadow map precision
 		float zNear = 1.0f;
-		float zFar = 96.0f;
+		float zFar = 100.0f;
 
 #pragma endregion
 
@@ -90,8 +90,7 @@
 		void draw();
 
 		void setupFrameBuffer();
-		void setupDepthStencil();
-		void setupRenderPass();
+
 
 		////Initialize
 		//void initApp();

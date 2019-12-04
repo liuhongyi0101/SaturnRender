@@ -43,7 +43,7 @@ void main()
 
 	// Calculate occlusion value
 	float occlusion = 0.0f;
-	float bais = 0.01;
+	float bais = 0.001;
 	for(int i = 0; i < SSAO_KERNEL_SIZE; i++)
 	{		
 		vec3 samplePos = TBN * uboSSAOKernel.samples[i].xyz; 
