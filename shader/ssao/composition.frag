@@ -6,15 +6,12 @@
 layout (binding = 0) uniform sampler2D samplerposition;
 layout (binding = 1) uniform sampler2D samplerNormal;
 layout (binding = 2) uniform sampler2D samplerAlbedo;
-layout (binding = 3) uniform sampler2D samplerSSAO;
-layout (binding = 4) uniform sampler2D samplerSSAOBlur;
-layout (binding = 6) uniform samplerCube samplerIrradiance;
-layout (binding = 7) uniform samplerCube prefilteredMap;
-layout (binding = 8) uniform sampler2D samplerBRDFLUT;
-layout (binding = 5) uniform UBO 
+layout (binding = 3) uniform sampler2D samplerSSAOBlur;
+layout (binding = 4) uniform samplerCube samplerIrradiance;
+layout (binding = 5) uniform samplerCube prefilteredMap;
+layout (binding = 6) uniform sampler2D samplerBRDFLUT;
+layout (binding = 7) uniform UBO 
 {
-	mat4 _dummy;
-	vec4 camerapos;
 	vec4 lightpos;
 } uboParams;
 

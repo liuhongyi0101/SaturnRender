@@ -108,9 +108,7 @@ public:
 	};
 
 	struct {
-		struct Offscreen : public FrameBuffer {
-			FrameBufferAttachment position, normal, albedo, depth;
-		} offscreen;
+		
 		struct SSAO : public FrameBuffer {
 			FrameBufferAttachment color;
 		} ssao, ssaoBlur;

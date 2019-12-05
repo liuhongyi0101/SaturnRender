@@ -381,13 +381,26 @@
 		ssrPass->createUniformBuffers(queue,camera.matrices.perspective);
 
 		std::vector<VkDescriptorImageInfo>	imageDescriptors = {
-	vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.position.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-	vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.normal.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-	vks::initializers::descriptorImageInfo(ssrPass->colorSampler, swapChain.buffers[0].view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-	
+		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.position.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.normal.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.albedo.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		//vks::initializers::descriptorImageInfo(ssaoPass->colorSampler, ssaoPass->frameBuffers.ssaoBlur.color.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
 		};
 		ssrPass->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors);
 
+		//deferredShading = std::make_shared<DeferredShading>(vulkanDevice);
+		//deferredShading->createRenderPass(width,width);
+		//deferredShading->createFrameBuffer(deferredPass->deferredFrameBuffers.depth.view);
+		//deferredShading->createDescriptorsLayouts();
+		//deferredShading->createPipeline();
+		//deferredShading->createUniformBuffers(queue,descriptorSets->uboParams.lights[0]);
+		//std::vector<VkDescriptorImageInfo>	IblImageDescriptors = {
+		//irradianceCube->textures.irradianceCube.descriptor,
+		//irradianceCube->textures.prefilteredCube.descriptor,
+		//irradianceCube->textures.lutBrdf.descriptor
+		//};
+	
+		//deferredShading->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors, IblImageDescriptors);
 
 	}
 

@@ -15,6 +15,7 @@
 #include "graphics/deferred.h"
 #include "graphics/skyboxPass.h"
 #include"graphics/ssrPass.h"
+#include "graphics/deferedShading.h"
 #define FB_COLOR_FORMAT VK_FORMAT_R8G8B8A8_UNORM
 #define GRID_DIM 2
 #define OBJ_DIM 0.1f
@@ -54,6 +55,7 @@
 		std::shared_ptr<DeferredPass> deferredPass;
 		std::shared_ptr<SkyboxPass>  skyboxPass;
 		std::shared_ptr<SsrPass>  ssrPass;
+		std::shared_ptr<DeferredShading> deferredShading;
 	protected:
 		
 		vks::Buffer uniformBuffer;

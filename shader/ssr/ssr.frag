@@ -32,95 +32,16 @@ vec4 viewToNDC(vec4 position) {
 
 int traceScreenSpaceRay(vec3 orig,vec3 dir,out vec2 hitPixel,out vec3 hitPoint){
 
-    // float rayLength = dir.z < 0.0 ? cb_farPlaneZ * abs(dir.z) + orig.z : 
-    //                                 abs(orig.z) * abs(dir.z); 
-    
-    // vec3 endPoint  = orig + dir * rayLength;
-    // endPoint = scaleLengthAgainstViewFrustum(orig, endPoint);
-
-    // RAYLENGTH E' ZERO SE LA DIREZIONE RIFLESSA E' VERSO +Z
-    // hitPoint = vec3(rayLength / 50.0);
+   
     int tr = 1, fa = 0;
     float step = 0.1;
     for(float i = 1.0; i <= 188.0; i++) {
         vec3 samplePoint = orig + dir * step * i;
 
         vec4 PS = viewToNDC(vec4(samplePoint, 1.0));
-        // abs because every depth is negative
+        
         float depthAtPS = abs(   texture(samplerPositionDepth, PS.xy * 0.5 + 0.5).w  );
-        if (depthAtPS < 0.001) depthAtPS = ubo.uWorldExtent.z;
-
-        // if (i > 79.0) { 
-        //     hitPoint.x = length(samplePoint - orig);
-        //     hitPixel.xy = PS.xy * 0.5 + 0.5; // vec2(hitPoint.x);
-        //     return true;
-        // }
-
-        // if we have an intersection...
-        // abs because every depth is negative
-        if (depthAtPS < abs(samplePoint.z * 0.98)) {
-
-
-            // // attempt a linear search
-            // // attempt a linear search
-            // // attempt a linear search
-            // vec3 lo = orig + dir * step * (i-1.0);
-            // vec3 hi = samplePoint;
-
-            // for (float j = 0.0; j < 8.0; j++) {
-            //     vec3 newEstimate = (lo + hi) / 2.0;
-            //     vec4 nePS = viewToNDC(vec4(newEstimate, 1.0));
-            //     float nedepthAtPS = abs(   texture(uPositionBuffer, nePS.xy * 0.5 + 0.5).z  );
-                
-            //     if( nedepthAtPS < abs(newEstimate.z) ) {
-            //         hi = newEstimate;
-            //     } else {
-            //         lo = newEstimate;
-            //     }
-            // }
-
-            // samplePoint = hi;
-            // PS = viewToNDC(vec4(samplePoint, 1.0));
-            // depthAtPS = abs(   texture(uPositionBuffer, PS.xy * 0.5 + 0.5).z  );
-            // // attempt a linear search - END 
-            // // attempt a linear search - END 
-            // // attempt a linear search - END 
-
-            // Trying to solve the z-cutoff problem ...            
-            if (abs(orig.z) > depthAtPS) return fa;
-            
-            // think about the following line.. if the difference in depth between the sample point and the hit point is
-            // bigger than a certain (small) value we're not hitting the visible part of the face,
-            // but something that's either a backface or anyway not visible on screen
-            // since we're interested in showing the reflections only of the visible part of an object, we're
-            // skipping the points behind/not visible of the object we're hitting
-            // this way we solve the z-cutoff problem
-
-            // see figure 1
-            if (abs(samplePoint.z) - depthAtPS > objectsThickness) return fa;
-            // in this case I'm just skipping iteration since I want the i to go to the max loop iteration
-            // so that we can instead sample the cubemap
-            // if (abs(samplePoint.z) - depthAtPS > objectsThickness) continue;
-            // Trying to solve the z-cutoff problem ... - END            
-
-
-
-            if (i > 79.0) { return fa; }
-            if (depthAtPS > ubo.uWorldExtent.z) return fa;
-            if (abs(samplePoint.z) > ubo.uWorldExtent.z) return fa;
-            if (abs(samplePoint.x) > ubo.uWorldExtent.x) return fa;
-            if (abs(samplePoint.y) > ubo.uWorldExtent.y) return fa;
-            if (abs(PS.z) >= 1.0) return fa;
-            if (abs(PS.x) >= 1.0) return fa;
-            if (abs(PS.y) >= 1.0) return fa;
-
-            hitPoint.x = length(samplePoint - orig);
-            
-
-
-            hitPixel.xy = PS.xy * 0.5 + 0.5; // vec2(hitPoint.x);
-            return tr;
-        }
+        hitPixel.x = depthAtPS;
     }
 
     return fa;
@@ -148,6 +69,6 @@ void main()
     int intersection = traceScreenSpaceRay(rayOriginVS, rayDir, hitPixel, hitPoint);
 
 
-	outFragColor = vec4(hitPixel, hitPoint.x, vDotN) * intersection + (vec4(0.0) * 1-intersection);
+	outFragColor = vec4(hitPixel, hitPoint.x, vDotN );
 }
 

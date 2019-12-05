@@ -50,7 +50,7 @@ void Pipeline::setupPipeline(VkDevice device, VkRenderPass renderPass,VkPipeline
 void Pipeline::createShadowPipeline(VkDevice device,VkRenderPass renderPass, VkPipelineLayout pipelineLayout)
 {
 	// No blend attachment states(no color attachments used)
-	rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
 	colorBlendState.attachmentCount = 0;
 	// Cull front faces
 	depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
