@@ -193,8 +193,9 @@
 			
 			vkCmdEndRenderPass(drawCmdBuffers[i]);
 
+			//deferredShading->buildCommandBuffer(drawCmdBuffers[i]);
 			// ssr
-			ssrPass->buildCommandBuffer(drawCmdBuffers[i]);
+			//ssrPass->buildCommandBuffer(drawCmdBuffers[i]);
 			VK_CHECK_RESULT(vkEndCommandBuffer(drawCmdBuffers[i]));
 		}
 		
@@ -223,7 +224,7 @@
 		submitInfo.pCommandBuffers = &shadowMapPass->commandBuffer;
 		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
 
-		// deferred rendering
+		// Gbuffer rendering
 		submitInfo.pWaitSemaphores = &shadowMapPass->semaphore;
 		submitInfo.pSignalSemaphores = &deferredPass->semaphore;
 		submitInfo.commandBufferCount = 1;
@@ -315,7 +316,39 @@
 		ssaoPass->preparePipelines(vdo,renderPass);
 	
 		pipeline->createQuadPipeline(device, renderPass, ssaoPass->pipelineLayouts.composition, "outputPipeline");
+		
+
+		ssrPass = std::make_shared<SsrPass>(vulkanDevice);
+		ssrPass->createFramebuffersAndRenderPass(width, height);
+		ssrPass->createDescriptorsLayouts();
+		ssrPass->createPipeline();
+		ssrPass->createUniformBuffers(queue, camera.matrices.perspective);
+
+		std::vector<VkDescriptorImageInfo>	imageDescriptors = {
+		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.position.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.normal.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.albedo.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(ssaoPass->colorSampler, ssaoPass->frameBuffers.ssaoBlur.color.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		};
+		ssrPass->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors);
+
+		deferredShading = std::make_shared<DeferredShading>(vulkanDevice);
+		deferredShading->createRenderPass(width, width);
+		deferredShading->createFrameBuffer(deferredPass->deferredFrameBuffers.depth.view);
+		deferredShading->createDescriptorsLayouts();
+		deferredShading->createPipeline();
+		deferredShading->createUniformBuffers(queue, descriptorSets->uboParams.lights[0]);
+		std::vector<VkDescriptorImageInfo>	IblImageDescriptors = {
+		irradianceCube->textures.irradianceCube.descriptor,
+		irradianceCube->textures.prefilteredCube.descriptor,
+		irradianceCube->textures.lutBrdf.descriptor
+		};
+
+		deferredShading->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors, IblImageDescriptors);
+
 		ssaoPass->buildDeferredCommandBuffer(pipeline);
+		deferredShading->buildCommandBuffer(ssaoPass->cmdBuffer);
+		VK_CHECK_RESULT(vkEndCommandBuffer(ssaoPass->cmdBuffer));
 	}
 	void Renderer::loadModule() {
 		
@@ -374,33 +407,7 @@
 		skyboxPass->wirteDescriptorSets(descriptorSets->descriptorPool, descriptorSets->cubeMap.descriptor);
 		skyboxPass->createPipeline(vdo->vertices.inputState,renderPass);
 		
-		ssrPass = std::make_shared<SsrPass>(vulkanDevice);
-		ssrPass->createFramebuffersAndRenderPass(width, height);
-		ssrPass->createDescriptorsLayouts();
-		ssrPass->createPipeline();
-		ssrPass->createUniformBuffers(queue,camera.matrices.perspective);
-
-		std::vector<VkDescriptorImageInfo>	imageDescriptors = {
-		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.position.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.normal.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.albedo.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		//vks::initializers::descriptorImageInfo(ssaoPass->colorSampler, ssaoPass->frameBuffers.ssaoBlur.color.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		};
-		ssrPass->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors);
-
-		//deferredShading = std::make_shared<DeferredShading>(vulkanDevice);
-		//deferredShading->createRenderPass(width,width);
-		//deferredShading->createFrameBuffer(deferredPass->deferredFrameBuffers.depth.view);
-		//deferredShading->createDescriptorsLayouts();
-		//deferredShading->createPipeline();
-		//deferredShading->createUniformBuffers(queue,descriptorSets->uboParams.lights[0]);
-		//std::vector<VkDescriptorImageInfo>	IblImageDescriptors = {
-		//irradianceCube->textures.irradianceCube.descriptor,
-		//irradianceCube->textures.prefilteredCube.descriptor,
-		//irradianceCube->textures.lutBrdf.descriptor
-		//};
 	
-		//deferredShading->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors, IblImageDescriptors);
 
 	}
 
