@@ -193,9 +193,6 @@
 			
 			vkCmdEndRenderPass(drawCmdBuffers[i]);
 
-			//deferredShading->buildCommandBuffer(drawCmdBuffers[i]);
-			// ssr
-			//ssrPass->buildCommandBuffer(drawCmdBuffers[i]);
 			VK_CHECK_RESULT(vkEndCommandBuffer(drawCmdBuffers[i]));
 		}
 		
@@ -318,7 +315,7 @@
 		pipeline->createQuadPipeline(device, renderPass, ssaoPass->pipelineLayouts.composition, "outputPipeline");
 		
 
-		ssrPass = std::make_shared<SsrPass>(vulkanDevice);
+		ssrPass = std::make_shared<SsrPass>(vulkanDevice); 
 		ssrPass->createFramebuffersAndRenderPass(width, height);
 		ssrPass->createDescriptorsLayouts();
 		ssrPass->createPipeline();
@@ -333,8 +330,8 @@
 		ssrPass->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors);
 
 		deferredShading = std::make_shared<DeferredShading>(vulkanDevice);
-		deferredShading->createRenderPass(width, width);
-		deferredShading->createFrameBuffer(deferredPass->deferredFrameBuffers.depth.view);
+		deferredShading->createRenderPass(width, height);
+		deferredShading->createFrameBuffer();
 		deferredShading->createDescriptorsLayouts();
 		deferredShading->createPipeline();
 		deferredShading->createUniformBuffers(queue, descriptorSets->uboParams.lights[0]);
@@ -348,6 +345,8 @@
 
 		ssaoPass->buildDeferredCommandBuffer(pipeline);
 		deferredShading->buildCommandBuffer(ssaoPass->cmdBuffer);
+		// ssr
+		ssrPass->buildCommandBuffer(ssaoPass->cmdBuffer);
 		VK_CHECK_RESULT(vkEndCommandBuffer(ssaoPass->cmdBuffer));
 	}
 	void Renderer::loadModule() {

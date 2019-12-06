@@ -100,7 +100,7 @@ void SsrPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  height)
 	sampler.addressModeV = sampler.addressModeU;
 	sampler.addressModeW = sampler.addressModeU;
 	sampler.mipLodBias = 0.0f;
-	sampler.maxAnisotropy = 8.0f;
+	sampler.maxAnisotropy = 1.0f;
 	sampler.minLod = 0.0f;
 	sampler.maxLod = 1.0f;
 	sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
@@ -218,7 +218,6 @@ void SsrPass::buildCommandBuffer(VkCommandBuffer &cmdBuffer)
 	
 	VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
 
-	// Clear values for all attachments written in the fragment sahder
 	std::vector<VkClearValue> clearValues(1);
 	clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
 
@@ -229,8 +228,6 @@ void SsrPass::buildCommandBuffer(VkCommandBuffer &cmdBuffer)
 	renderPassBeginInfo.renderArea.extent.height = ssrRtFrameBuffer.height;
 	renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassBeginInfo.pClearValues = clearValues.data();
-
-	//VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
 
 	vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 

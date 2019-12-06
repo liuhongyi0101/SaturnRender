@@ -8,7 +8,7 @@ public:
 	~DeferredShading();
 
 	void createRenderPass(uint32_t width, uint32_t  height);
-	void createFrameBuffer(VkImageView depthView);
+	void createFrameBuffer();
 	void createPipeline();
 	void createDescriptorsLayouts();
 	void wirteDescriptorSets(VkDescriptorPool &descriptorPool, std::vector<VkDescriptorImageInfo> &texDescriptor, std::vector<VkDescriptorImageInfo> &iblTexDescriptor);
@@ -17,7 +17,7 @@ public:
 	void buildCommandBuffer(VkCommandBuffer& cmdBuffer);
 
 	struct DeferredShadingRtFrameBuffer : public FrameBuffer {
-		FrameBufferAttachment deferredShadingRtAttachment;
+		FrameBufferAttachment deferredShadingRtAttachment,deferredDepthRtAttachment;
 	} deferredShadingRtFrameBuffer;
 
 	struct UBOParams {
