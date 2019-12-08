@@ -14,7 +14,7 @@ struct renderpassUnit {
 	VkPipelineLayout pipelineLayout;
 	VkDescriptorSet descriptorSet;
 	VkDescriptorSet descriptorSetSkybox;
-	Meshes models;
+	vks::Model models;
 	VkFramebuffer    frameBuffer;
 	VkCommandBuffer commandBuffer;
 };
@@ -24,7 +24,7 @@ public:
 	Command(VkDevice &device);
 	~Command();
 	VkClearColorValue defaultClearColor = { { 0.025f, 0.025f, 0.025f, 1.0f } };
-	void buildCommandBuffers(renderpassUnit renderPass, std::vector<VkCommandBuffer>& drawCmdBuffers, std::vector<VkFramebuffer> &frameBuffers);
+
 	void buildShadowMapCommandBuffer(renderpassUnit &renderPass);
 	void ssaobuildCommandBuffers(renderpassUnit renderPass, std::vector<VkCommandBuffer>& drawCmdBuffers, std::vector<VkFramebuffer> &frameBuffers);
 	VkDevice device;

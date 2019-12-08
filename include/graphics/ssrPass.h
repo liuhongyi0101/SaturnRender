@@ -21,7 +21,7 @@ public:
 
 	struct UBOParams {
 		glm::mat4 invProjection;
-		glm::vec3 uWorldExtent;
+		
 	
 	} uboParams;
 

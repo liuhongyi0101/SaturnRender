@@ -115,10 +115,10 @@ void SsrPass::createDescriptorsLayouts()
 
 
 	setLayoutBindings = {
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT || VK_SHADER_STAGE_FRAGMENT_BIT, 0),
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT |  VK_SHADER_STAGE_FRAGMENT_BIT, 0),
 		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1),// position depth buffer
 		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2),// normalbuffer
-		
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3),// colorbuffer
 	};
 	setLayoutCreateInfo = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
 	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &setLayoutCreateInfo, nullptr, &descriptorSetLayout));
@@ -175,6 +175,7 @@ void SsrPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool, std::vector<
 		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.descriptor),
 		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1 , &texDescriptor[0]),
 		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2 , &texDescriptor[1]),
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3 , &texDescriptor[4]),
 	
 
 	};
@@ -206,7 +207,7 @@ void SsrPass::updateUniformBufferMatrices(glm::mat4 &invPerspective)
 	t4.z /= t4.w;
 	t4.w /= t4.w;
 	uboParams.invProjection = invPerspective;
-	uboParams.uWorldExtent = glm::vec3(t4.x,t4.y,-t4.z);
+
 	VK_CHECK_RESULT(uniformBuffers.map());
 	uniformBuffers.copyTo(&uboParams, sizeof(uboParams));
 	uniformBuffers.unmap();
@@ -214,8 +215,6 @@ void SsrPass::updateUniformBufferMatrices(glm::mat4 &invPerspective)
 
 void SsrPass::buildCommandBuffer(VkCommandBuffer &cmdBuffer)
 {
-
-	
 	VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
 
 	std::vector<VkClearValue> clearValues(1);

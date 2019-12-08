@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-	Renderer::Renderer() : VulkanExampleBase(false) {
+	Renderer::Renderer() : VulkanExampleBase(true) {
 
 		title = "blade";
 		paused = false;
@@ -15,20 +15,12 @@
 		material->setMateiral();
 		control = std::make_shared<Control>();
 		control->setupCamera(camera,width, height);
-		objectNames = { "Venus" };
+		
 	}
 	
 	void Renderer::loadAssets(vks::VulkanDevice *vulkanDevice, VkQueue queue)
 	{
 
-		std::vector<std::string> filenames = {  "cerberus/cerberus.fbx" };
-		models.skybox.loadFromFile(modelPath + "models/cube.obj", vdo->vertexLayout, 1.0f, vulkanDevice, queue);
-		for (auto file : filenames) {
-			vks::Model model;
-			model.loadFromFile(modelPath + "models/" + file, vdo->vertexLayout,1.0, vulkanDevice, queue);
-			models.objects.push_back(model);
-		}
-		models.scenes.loadFromFile(modelPath + "models/samplescene.dae", vdo->vertexLayout, 0.25f, vulkanDevice, queue);
 		descriptorSets->cubeMap.loadFromFile(modelPath + "textures/hdr/pisa_cube.ktx", VK_FORMAT_R16G16B16A16_SFLOAT, vulkanDevice, queue);
 		descriptorSets->colorMap.loadFromFile(modelPath + "textures/vulkan_cloth_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, queue);
 		descriptorSets->pbrTex.albedoMap.loadFromFile(modelPath + "models/cerberus/albedo.ktx", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, queue);
@@ -46,20 +38,13 @@
 	}
 	void Renderer::updateUniformBuffers()
 	{
-		
-		// 3D object
-		descriptorSets->uboMatrices.projection = camera.matrices.perspective;
-		descriptorSets->uboMatrices.view = camera.matrices.view;
-		descriptorSets->uboMatrices.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f + (models.objectIndex == 1 ? 45.0f : 0.0f)), glm::vec3(0.0f, 1.0f, 0.0f));
-		descriptorSets->uboMatrices.camPos = camera.position * -1.0f;
+
 		glm::vec4 lightpos = descriptorSets->uboParams.lights[0];
 		lightpos = camera.matrices.view * descriptorSets->uboMatrices.model * lightpos;
 		descriptorSets->uboParams.lights[0] = lightpos;
 		descriptorSets->uboMatrices.depthBiasMVP = descriptorSets->uboShadowMapMvpVS.depthMVP;
 		memcpy(descriptorSets->uniformBuffers.object.mapped, &descriptorSets->uboMatrices, sizeof(descriptorSets->uboMatrices));
-
-		// Skybox
-		
+	
 		descriptorSets->uboVS.projection = camera.matrices.perspective;
 
 		descriptorSets->uboVS.model = glm::mat4(glm::mat3(camera.matrices.view));
@@ -99,7 +84,6 @@
 		memcpy(descriptorSets->uniformBuffers.shadowMapMvp.mapped, &descriptorSets->uboShadowMapMvpVS, sizeof(descriptorSets->uboShadowMapMvpVS));
 	}
 	
-
 	void Renderer::setupFrameBuffer()
 	{
 		VkImageView attachments[2];
@@ -135,7 +119,7 @@
 		renderpassunit.height = shadowMapPass->height;
 		renderpassunit.width = shadowMapPass->width;
 		renderpassunit.commandBuffer = shadowMapPass->commandBuffer;
-		renderpassunit.models = models;
+		renderpassunit.models = sceneGraph->models.nodes["samplescene.dae"];
 		renderpassunit.pipelineFact = pipeline;
 		renderpassunit.pipelineLayout = pipelineLayout;
 
@@ -228,7 +212,7 @@
 		submitInfo.pCommandBuffers = &deferredPass->cmdBuffer;
 		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
 
-		// SSAO rendering
+		// postprocess rendering
 		submitInfo.pWaitSemaphores = &deferredPass->semaphore;
 		submitInfo.pSignalSemaphores = &ssaoPass->semaphore;
 		submitInfo.commandBufferCount = 1;
@@ -282,10 +266,10 @@
 			if (overlay->comboBox("Material", &material->materialIndex, material->materialNames)) {
 				buildCommandBuffers(renderPass, drawCmdBuffers, frameBuffers);
 			}
-			if (overlay->comboBox("Object type", &models.objectIndex, objectNames)) {
+			/*if (overlay->comboBox("Object type", &models.objectIndex, objectNames)) {
 				updateUniformBuffers();
 				buildCommandBuffers(renderPass, drawCmdBuffers, frameBuffers);
-			}
+			}*/
 		}
 		return 0;
 	}
@@ -295,10 +279,6 @@
 
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		vkDestroyDescriptorSetLayout(device, descriptorSets->descriptorSetLayout, nullptr);
-
-		for (auto& model : models.objects) {
-			model.destroy();
-		}
 		descriptorSets->uniformBuffers.object.destroy();
 		descriptorSets->uniformBuffers.params.destroy();
 	}
@@ -309,7 +289,7 @@
 		ssaoPass->setupLayoutsAndDescriptors(deferredPass->deferredFrameBuffers.position.view, deferredPass->deferredFrameBuffers.normal.view, deferredPass->deferredFrameBuffers.albedo.view);
 		ssaoPass->compositionSet(irradianceCube->textures.irradianceCube, irradianceCube->textures.prefilteredCube, irradianceCube->textures.lutBrdf,
 			deferredPass->deferredFrameBuffers.position.view, deferredPass->deferredFrameBuffers.normal.view, deferredPass->deferredFrameBuffers.albedo.view);
-		ssaoPass->models.scene = models.scenes;
+		
 		ssaoPass->preparePipelines(vdo,renderPass);
 	
 		pipeline->createQuadPipeline(device, renderPass, ssaoPass->pipelineLayouts.composition, "outputPipeline");
@@ -321,20 +301,24 @@
 		ssrPass->createPipeline();
 		ssrPass->createUniformBuffers(queue, camera.matrices.perspective);
 
-		std::vector<VkDescriptorImageInfo>	imageDescriptors = {
-		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.position.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.normal.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.albedo.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		vks::initializers::descriptorImageInfo(ssaoPass->colorSampler, ssaoPass->frameBuffers.ssaoBlur.color.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		};
-		ssrPass->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors);
-
 		deferredShading = std::make_shared<DeferredShading>(vulkanDevice);
 		deferredShading->createRenderPass(width, height);
 		deferredShading->createFrameBuffer();
 		deferredShading->createDescriptorsLayouts();
 		deferredShading->createPipeline();
 		deferredShading->createUniformBuffers(queue, descriptorSets->uboParams.lights[0]);
+
+
+		std::vector<VkDescriptorImageInfo>	imageDescriptors = {
+		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.position.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.normal.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.albedo.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(ssaoPass->colorSampler, ssaoPass->frameBuffers.ssaoBlur.color.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(ssaoPass->colorSampler, deferredShading->deferredShadingRtFrameBuffer.deferredShadingRtAttachment.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		};
+		
+
+		
 		std::vector<VkDescriptorImageInfo>	IblImageDescriptors = {
 		irradianceCube->textures.irradianceCube.descriptor,
 		irradianceCube->textures.prefilteredCube.descriptor,
@@ -342,6 +326,8 @@
 		};
 
 		deferredShading->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors, IblImageDescriptors);
+		ssrPass->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors);
+
 
 		ssaoPass->buildDeferredCommandBuffer(pipeline);
 		deferredShading->buildCommandBuffer(ssaoPass->cmdBuffer);
@@ -353,6 +339,9 @@
 		
 		vdo = std::make_shared<VertexDescriptions>();
 		vdo->setupVertexDescriptions();
+
+		sceneGraph = std::make_shared<SceneGraph>();
+		sceneGraph->createScene(vulkanDevice, queue, vdo);
 		pipeline = std::make_shared<Pipeline>(device);
 		descriptorSets = std::make_shared<Descriptor>(vulkanDevice);
 
@@ -379,7 +368,7 @@
 		});
 		UIOverlay = uiRender->UIOverlay;
 
-		irradianceCube = std::make_shared<IrradianceCube>(vulkanDevice, cmdPool,  vdo,models, queue);
+		irradianceCube = std::make_shared<IrradianceCube>(vulkanDevice, cmdPool,  vdo,sceneGraph->models.skybox, queue);
 		irradianceCube->generateIrradianceCube(descriptorSets->cubeMap);
 		irradianceCube->generatePrefilteredCube(descriptorSets->cubeMap);
 		irradianceCube->generateBRDFLUT(descriptorSets->cubeMap);
@@ -397,7 +386,8 @@
 		deferredPass->createDescriptorsLayouts(descriptorSets->descriptorPool);
 		deferredPass->wirteDescriptorSets(descriptorSets->descriptorPool, descriptorSets->shadowMapTexDescriptor);
 		deferredPass->createPipeline(vdo->vertices.inputState);
-		deferredPass->buildCommandBuffer(cmdPool,models.scenes.vertices.buffer, models.scenes.indices.buffer, models.scenes.indexCount);
+		
+		deferredPass->buildCommandBuffer(cmdPool, sceneGraph->models.nodes["samplescene.dae"].vertices.buffer, sceneGraph->models.nodes["samplescene.dae"].indices.buffer, sceneGraph->models.nodes["samplescene.dae"].indexCount);
 
 		skyboxPass  = std::make_shared<SkyboxPass>(vulkanDevice);
 		skyboxPass->createModel(queue, vdo->vertexLayout);

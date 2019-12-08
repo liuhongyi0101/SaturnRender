@@ -23,10 +23,7 @@ public:
 
 
 	VkDevice device;
-	struct {
-		vks::Model scene;
-	} models;
-	
+
 	struct {
 		vks::Texture2D ssaoNoise;
 	} textures;

@@ -12,8 +12,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <gli/gli.hpp>
-
-
 #include "VulkanDevice.hpp"
 #include "VulkanTexture.hpp"
 #include "VulkanModel.hpp"
@@ -24,7 +22,7 @@
 class IrradianceCube
 {
 public:
-	IrradianceCube(vks::VulkanDevice *vulkanDevice, VkCommandPool &cmdPool,std::shared_ptr<VertexDescriptions> &vdo_, Meshes &models, VkQueue &queue);
+	IrradianceCube(vks::VulkanDevice *vulkanDevice, VkCommandPool &cmdPool,std::shared_ptr<VertexDescriptions> &vdo_, vks::Model &skybox, VkQueue &queue);
 	~IrradianceCube();
 	void generateIrradianceCube(vks::TextureCubeMap &cubeMap);
 	void generatePrefilteredCube(vks::TextureCubeMap &cubeMap);
@@ -36,7 +34,7 @@ public:
 	VkCommandPool cmdPool;
 	std::vector<VkShaderModule> shaderModules;
 	std::shared_ptr<VertexDescriptions> vdo_;
-	Meshes models;
+	vks::Model skybox;
 	VkQueue queue;
 	struct Textures {
 	

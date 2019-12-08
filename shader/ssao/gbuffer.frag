@@ -62,6 +62,6 @@ void main()
 	float inshadow = filterPCF(inShadowCoord / inShadowCoord.w);
 	outPosition = vec4(inPos, linearDepth(gl_FragCoord.z));
 	outNormal = vec4(normalize(inNormal) * 0.5 + 0.5, 1.0);
-	outAlbedo = vec4(1.0f, 0.765557f, 0.336057f, inshadow) ;
+	outAlbedo = vec4(1.0f, 0.765557f, 0.336057f, 1.0) ;
 	outmix =vec4(1.0,0.1,0.0, 1.0);
 }

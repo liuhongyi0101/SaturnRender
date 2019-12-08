@@ -1,5 +1,5 @@
 #pragma once
-
+#include "renderer/sceneGraph.h"
 #include "bobject/material.h"
 #include "renderer/descriptor.h"
 #include "renderer/vertexDescriptions.h"
@@ -28,21 +28,14 @@
 
 	public:
 	
-		std::vector<std::string> objectNames;
-
-		Meshes models;
-
 		renderpassUnit renderpassunit;
-	
 		VkPipelineLayout pipelineLayout;
 		UiInfo uiinfo;
 		UiComponents uiComponents;
 
 	private:
-		VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
-		
+		std::shared_ptr<SceneGraph> sceneGraph;
 		std::shared_ptr<Pipeline> pipeline;
-	
 		std::shared_ptr<VertexDescriptions> vdo;
 		std::shared_ptr<Descriptor> descriptorSets;
 		std::shared_ptr<Materials> material;

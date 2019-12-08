@@ -1,11 +1,11 @@
 #include "renderer/IrradianceCube.h"
 #include "utils/loadshader.h"
-IrradianceCube::IrradianceCube(vks::VulkanDevice *vulkanDevice, VkCommandPool &cmdPool, std::shared_ptr<VertexDescriptions> &vdo_, Meshes &models, VkQueue &queue)
+IrradianceCube::IrradianceCube(vks::VulkanDevice *vulkanDevice, VkCommandPool &cmdPool, std::shared_ptr<VertexDescriptions> &vdo_, vks::Model &skybox, VkQueue &queue)
 {
 	this->vulkanDevice = vulkanDevice;
 	this->cmdPool = cmdPool;
 	this->vdo_ = vdo_;
-	this->models = models;
+	this->skybox = skybox;
 	this->queue = queue;
 	this->device = vulkanDevice->logicalDevice;
 }
@@ -374,9 +374,9 @@ void IrradianceCube::generateIrradianceCube(vks::TextureCubeMap &cubeMap)
 
 			VkDeviceSize offsets[1] = { 0 };
 
-			vkCmdBindVertexBuffers(cmdBuf, 0, 1, &models.skybox.vertices.buffer, offsets);
-			vkCmdBindIndexBuffer(cmdBuf, models.skybox.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(cmdBuf, models.skybox.indexCount, 1, 0, 0, 0);
+			vkCmdBindVertexBuffers(cmdBuf, 0, 1, &skybox.vertices.buffer, offsets);
+			vkCmdBindIndexBuffer(cmdBuf, skybox.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(cmdBuf, skybox.indexCount, 1, 0, 0, 0);
 
 			vkCmdEndRenderPass(cmdBuf);
 
@@ -766,9 +766,9 @@ void IrradianceCube::generatePrefilteredCube(vks::TextureCubeMap &cubeMap)
 
 			VkDeviceSize offsets[1] = { 0 };
 
-			vkCmdBindVertexBuffers(cmdBuf, 0, 1, &models.skybox.vertices.buffer, offsets);
-			vkCmdBindIndexBuffer(cmdBuf, models.skybox.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(cmdBuf, models.skybox.indexCount, 1, 0, 0, 0);
+			vkCmdBindVertexBuffers(cmdBuf, 0, 1, &skybox.vertices.buffer, offsets);
+			vkCmdBindIndexBuffer(cmdBuf, skybox.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(cmdBuf, skybox.indexCount, 1, 0, 0, 0);
 
 			vkCmdEndRenderPass(cmdBuf);
 

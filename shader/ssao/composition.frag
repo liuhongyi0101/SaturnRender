@@ -141,7 +141,7 @@ void main()
 
 	vec3 ambient = (kD * diffuse )+ specular;
 	//float inshadow = filterPCF(inShadowCoord / inShadowCoord.w);
-	vec3 color = (ambient + Lo) *pow(ssao,4) * albedo.w;
+	vec3 color = (ambient + Lo) * albedo.w;
 
 	// Tone mapping
 	color = Uncharted2Tonemap(color * 3.0);
