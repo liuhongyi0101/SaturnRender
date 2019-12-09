@@ -206,6 +206,7 @@ void SsrPass::updateUniformBufferMatrices(glm::mat4 &invPerspective)
 	t4.y /= t4.w;
 	t4.z /= t4.w;
 	t4.w /= t4.w;
+	uboParams.uWorldExtent = glm::vec3(t4.x, t4.y, -t4.z);
 	uboParams.invProjection = invPerspective;
 
 	VK_CHECK_RESULT(uniformBuffers.map());

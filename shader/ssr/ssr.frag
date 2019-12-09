@@ -23,10 +23,10 @@ const float minRayStep = 0.1;
 const float maxSteps = 40;
 const float searchDist = 10;
 const float searchDistInv = 0.1;
-const int numBinarySearchSteps = 10;
+const int numBinarySearchSteps = 50;
 const float maxDDepth = 1.0;
 const float maxDDepthInv = 1.0;
-const float cb_zThickness = 0.01;
+const float cb_zThickness = 0.2;
 const float reflectionSpecularFalloffExponent = 3.0;
 
 
@@ -53,7 +53,7 @@ vec3 BinarySearch(vec3 dir, inout vec3 hitCoord, out float dDepth)
         dDepth = hitCoord.z - depth;
 
 
-        if(dDepth > 0.0)
+        if(dDepth > cb_zThickness)
             hitCoord += dir;
 
 
@@ -94,7 +94,7 @@ vec4 RayCast(vec3 dir, inout vec3 hitCoord, out float dDepth)
         dDepth = hitCoord.z - depth;
 
 
-        if(dDepth < 0.0)
+        if(dDepth <cb_zThickness)
             return vec4(BinarySearch(dir, hitCoord, dDepth), 1.0);
     }
 
