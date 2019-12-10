@@ -18,7 +18,7 @@ layout (location = 0) in vec2 inUV;
 layout (location = 0) out vec4 outFragColor;
 
 // Consts should help improve performance
-const float rayStep = 0.25;
+const float rayStep = 0.4;
 const float minRayStep = 0.1;
 const float maxSteps = 40;
 const float searchDist = 10;
@@ -26,9 +26,9 @@ const float searchDistInv = 0.1;
 const int numBinarySearchSteps = 50;
 const float maxDDepth = 1.0;
 const float maxDDepthInv = 1.0;
-const float cb_zThickness = 0.2;
+const float cb_zThickness = 0.3;
 const float reflectionSpecularFalloffExponent = 3.0;
-
+ float g_depthbias = 0.001f;
 
 vec4 viewToNDC(vec4 position) {
     vec4 hs =ubo.perspective * position;
@@ -53,7 +53,7 @@ vec3 BinarySearch(vec3 dir, inout vec3 hitCoord, out float dDepth)
         dDepth = hitCoord.z - depth;
 
 
-        if(dDepth > cb_zThickness)
+        if( dDepth > 0.0)
             hitCoord += dir;
 
 
@@ -94,7 +94,7 @@ vec4 RayCast(vec3 dir, inout vec3 hitCoord, out float dDepth)
         dDepth = hitCoord.z - depth;
 
 
-        if(dDepth <cb_zThickness)
+        if(dDepth>g_depthbias && dDepth <cb_zThickness)
             return vec4(BinarySearch(dir, hitCoord, dDepth), 1.0);
     }
 
