@@ -14,8 +14,9 @@
 #include "renderer/ssaoPass.h"
 #include "graphics/deferred.h"
 #include "graphics/skyboxPass.h"
-#include"graphics/ssrPass.h"
+#include "graphics/ssrPass.h"
 #include "graphics/deferedShading.h"
+#include "graphics/prezPass.h"
 #define FB_COLOR_FORMAT VK_FORMAT_R8G8B8A8_UNORM
 #define GRID_DIM 2
 #define OBJ_DIM 0.1f
@@ -49,6 +50,7 @@
 		std::shared_ptr<SkyboxPass>  skyboxPass;
 		std::shared_ptr<SsrPass>  ssrPass;
 		std::shared_ptr<DeferredShading> deferredShading;
+		std::shared_ptr<PrezPass> prezPass;
 	protected:
 		
 		vks::Buffer uniformBuffer;
@@ -86,26 +88,17 @@
 
 		void setupFrameBuffer();
 
-
-		////Initialize
 		//void initApp();
 
 		//void renderObject(Model *model, Model::stride child_model);
 		//void renderObjects(Model *model);
-		//void createCommandBuffer();
-
-		//void draw();
-
+	
 		//void initCamera();
-
-		//void initModel();
-		//void addModel();
-		//void removeModel();
 
 		//virtual void getEnabledFeatures();
 	private:
 		//void destroyResource();
-		//void loadModule();
+	
 #pragma endregion
 	};
 

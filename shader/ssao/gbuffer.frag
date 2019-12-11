@@ -13,7 +13,7 @@ layout (location = 1) out vec4 outNormal;
 layout (location = 2) out vec4 outAlbedo;
 layout (location = 3) out vec4 outmix;
 const float NEAR_PLANE = 0.1f; //todo: specialization const
-const float FAR_PLANE = 2560.0f; //todo: specialization const 
+const float FAR_PLANE = 256.0f; //todo: specialization const 
 layout (binding = 1) uniform sampler2D shadowMap;
 float linearDepth(float depth)
 {

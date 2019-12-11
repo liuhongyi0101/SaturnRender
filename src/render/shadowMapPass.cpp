@@ -6,7 +6,6 @@ ShadowMapPass::ShadowMapPass(vks::VulkanDevice *vulkanDevice, VkCommandPool &cmd
 	this->device = vulkanDevice->logicalDevice;
 
 	commandBuffer = createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, false, cmdPool);
-	// Create a semaphore used to synchronize offscreen rendering and usage
 	VkSemaphoreCreateInfo semaphoreCreateInfo = vks::initializers::semaphoreCreateInfo();
 	VK_CHECK_RESULT(vkCreateSemaphore(this->device, &semaphoreCreateInfo, nullptr, &semaphore));
 }
@@ -35,8 +34,6 @@ VkCommandBuffer ShadowMapPass::createCommandBuffer(VkCommandBufferLevel level, b
 
 	return cmdBuffer;
 }
-// Set up a separate render pass for the offscreen frame buffer
-// This is necessary as the offscreen frame buffer attachments use formats different to those from the example render pass
 void ShadowMapPass::prepareShadowMapPass()
 {
 	VkAttachmentDescription attachmentDescription{};
@@ -87,9 +84,6 @@ void ShadowMapPass::prepareShadowMapPass()
 
 	VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass));
 }
-
-// Setup the offscreen framebuffer for rendering the scene from light's point-of-view to
-// The depth attachment of this framebuffer will then be used to sample from in the fragment shader of the shadowing pass
 void ShadowMapPass::prepareShadowMapPassFramebuffer()
 {
 	 width = SHADOWMAP_DIM;

@@ -40,7 +40,7 @@ void Pipeline::setupPipeline(VkDevice device, VkRenderPass renderPass,VkPipeline
 	createPipeline(device, std::string("pbrbasic/pbr.vert.spv"), std::string("pbrbasic/pbr.frag.spv"),  depthstate, pipelines["opaquePipeline"]);
 	createPipeline(device, std::string("pbrbasic/pbr.vert.spv"), std::string("pbrbasic/pbrNoTex.frag.spv"), depthstate, pipelines["NoTexPipeline"]);
 	
-	//createPipeline(device, std::string("pbrbasic/fullscreen.vert.spv"), std::string("pbrbasic/fullscreen.frag.spv"), depthstate, pipelines["quadPipeline"]);
+
 	
 	//pipelineCreateInfo.pVertexInputState = &emptyInputState;
 	//
@@ -66,7 +66,7 @@ void Pipeline::createShadowPipeline(VkDevice device,VkRenderPass renderPass, VkP
 
 	pipelineCreateInfo.layout = pipelineLayout;
 	pipelineCreateInfo.renderPass = renderPass;
-	createPipeline(device, std::string("shadowmapping/offscreen.vert.spv"), std::string("shadowmapping/offscreen.frag.spv"), depthstate, pipelines["genShadowPipeline"]);
+	createPipeline(device, std::string("shadowmapping/depth.vert.spv"), std::string("shadowmapping/depth.frag.spv"), depthstate, pipelines["genShadowPipeline"]);
 	
 }
 

@@ -13,10 +13,13 @@ layout (binding = 0) uniform UBO
 layout (binding = 1) uniform sampler2D samplerPositionDepth;
 layout (binding = 2) uniform sampler2D samplerNormal;
 layout (binding = 3) uniform sampler2D samplerColor;
+layout (binding = 4) uniform sampler2D frontZbuffer;
 
 layout (location = 0) in vec2 inUV;
 layout (location = 0) out vec4 outFragColor;
 
+const float NEAR_PLANE = 0.1f; //todo: specialization const
+const float FAR_PLANE = 256.0f; //todo: specialization const 
 // Consts should help improve performance
 const float rayStep = 0.4;
 const float minRayStep = 0.1;
@@ -28,7 +31,7 @@ const float maxDDepth = 1.0;
 const float maxDDepthInv = 1.0;
 const float cb_zThickness = 0.3;
 const float reflectionSpecularFalloffExponent = 3.0;
- float g_depthbias = 0.001f;
+float g_depthbias = 0.001f;
 
 vec4 viewToNDC(vec4 position) {
     vec4 hs =ubo.perspective * position;
@@ -101,7 +104,11 @@ vec4 RayCast(vec3 dir, inout vec3 hitCoord, out float dDepth)
 
     return vec4(0.0, 0.0, 0.0, 0.0);
 }
-
+float linearDepth(float depth)
+{
+	float z = depth * 2.0f - 1.0f; 
+	return (2.0f * NEAR_PLANE * FAR_PLANE) / (FAR_PLANE + NEAR_PLANE - z * (FAR_PLANE - NEAR_PLANE));	
+}
 
 void main() 
 {
@@ -110,6 +117,7 @@ void main()
 	vec3 normal = normalize(texture(samplerNormal, inUV).rgb * 2.0 - 1.0);
     vec3 toPositionVS   = normalize(rayOriginVS);
     
+    float fdepth =texture(frontZbuffer,inUV).r;
     vec3 rayDir =  normalize(reflect(toPositionVS,normal));
 
     vec2 hitPixel = vec2(0.0f, 0.0f);

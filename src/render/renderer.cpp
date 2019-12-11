@@ -80,7 +80,7 @@
 		glm::mat4 depthModelMatrix = glm::mat4(1.0f);
 
 		descriptorSets->uboShadowMapMvpVS.depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
-
+		glm::vec4 re = depthViewMatrix * glm::vec4(1.0,10.0,1.0, 1.0);
 		memcpy(descriptorSets->uniformBuffers.shadowMapMvp.mapped, &descriptorSets->uboShadowMapMvpVS, sizeof(descriptorSets->uboShadowMapMvpVS));
 	}
 	
@@ -315,6 +315,7 @@
 		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.albedo.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
 		vks::initializers::descriptorImageInfo(ssaoPass->colorSampler, ssaoPass->frameBuffers.ssaoBlur.color.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
 		vks::initializers::descriptorImageInfo(ssaoPass->colorSampler, deferredShading->deferredShadingRtFrameBuffer.deferredShadingRtAttachment.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(prezPass->colorSampler, prezPass->prezRtFrameBuffer.prezRtAttachment.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
 		};
 		
 
@@ -330,6 +331,8 @@
 
 
 		ssaoPass->buildDeferredCommandBuffer(pipeline);
+
+		prezPass->buildCommandBuffer(ssaoPass->cmdBuffer, sceneGraph->models.nodes["samplescene.dae"].vertices.buffer, sceneGraph->models.nodes["samplescene.dae"].indices.buffer, sceneGraph->models.nodes["samplescene.dae"].indexCount);
 		deferredShading->buildCommandBuffer(ssaoPass->cmdBuffer);
 		// ssr
 		ssrPass->buildCommandBuffer(ssaoPass->cmdBuffer);
@@ -395,8 +398,15 @@
 		skyboxPass->createUniformBuffers(queue, camera.matrices.perspective, glm::mat4(glm::mat3(camera.matrices.view)));
 		skyboxPass->wirteDescriptorSets(descriptorSets->descriptorPool, descriptorSets->cubeMap.descriptor);
 		skyboxPass->createPipeline(vdo->vertices.inputState,renderPass);
-		
-	
 
+
+		prezPass = std::make_shared<PrezPass>(vulkanDevice);
+		prezPass->createRenderPass(width,height);
+		prezPass->createFrameBuffer();
+		prezPass->createDescriptorsLayouts();
+		prezPass->createPipeline(vdo->vertices.inputState);
+		glm::mat4 mvp = camera.matrices.perspective * camera.matrices.view;
+		prezPass->createUniformBuffers(queue, mvp);
+		prezPass->wirteDescriptorSets(descriptorSets->descriptorPool);
 	}
 
