@@ -21,9 +21,9 @@ layout (location = 0) out vec4 outFragColor;
 const float NEAR_PLANE = 0.1f; //todo: specialization const
 const float FAR_PLANE = 256.0f; //todo: specialization const 
 // Consts should help improve performance
-const float rayStep = 0.4;
+const float rayStep = 5.0;
 const float minRayStep = 0.1;
-const float maxSteps = 40;
+const float maxSteps = 400;
 const float searchDist = 10;
 const float searchDistInv = 0.1;
 const int numBinarySearchSteps = 50;
@@ -38,6 +38,18 @@ vec4 viewToNDC(vec4 position) {
     return hs / hs.w;
 }
 
+float linearDepth(float depth)
+{
+	float z = depth * 2.0f - 1.0f; 
+	return (2.0f * NEAR_PLANE * FAR_PLANE) / (FAR_PLANE + NEAR_PLANE - z * (FAR_PLANE - NEAR_PLANE));	
+}
+float frontDepth(vec2 uv)
+{
+      
+    float fdepth =texture(frontZbuffer,uv).r;
+    fdepth = linearDepth(fdepth);
+    return  -fdepth;
+}
 vec3 BinarySearch(vec3 dir, inout vec3 hitCoord, out float dDepth)
 {
     float depth;
@@ -51,8 +63,7 @@ vec3 BinarySearch(vec3 dir, inout vec3 hitCoord, out float dDepth)
 
 
         depth = texture(samplerPositionDepth, projectedCoord.xy).z;
-
-
+       
         dDepth = hitCoord.z - depth;
 
 
@@ -92,23 +103,19 @@ vec4 RayCast(vec3 dir, inout vec3 hitCoord, out float dDepth)
 
 
         depth = texture(samplerPositionDepth, projectedCoord.xy).z;
-
-
+        float fdepth = frontDepth(projectedCoord.xy);
+        float thickness = -depth +fdepth;
         dDepth = hitCoord.z - depth;
+        
 
-
-        if(dDepth>g_depthbias && dDepth <cb_zThickness)
-            return vec4(BinarySearch(dir, hitCoord, dDepth), 1.0);
+        if(hitCoord.z>depth && hitCoord.z <fdepth)
+            return vec4(vec3(vec2( projectedCoord.xy), dDepth), 1.0);
     }
 
 
     return vec4(0.0, 0.0, 0.0, 0.0);
 }
-float linearDepth(float depth)
-{
-	float z = depth * 2.0f - 1.0f; 
-	return (2.0f * NEAR_PLANE * FAR_PLANE) / (FAR_PLANE + NEAR_PLANE - z * (FAR_PLANE - NEAR_PLANE));	
-}
+
 
 void main() 
 {
@@ -117,7 +124,6 @@ void main()
 	vec3 normal = normalize(texture(samplerNormal, inUV).rgb * 2.0 - 1.0);
     vec3 toPositionVS   = normalize(rayOriginVS);
     
-    float fdepth =texture(frontZbuffer,inUV).r;
     vec3 rayDir =  normalize(reflect(toPositionVS,normal));
 
     vec2 hitPixel = vec2(0.0f, 0.0f);
