@@ -20,23 +20,6 @@ layout (location = 0) out vec4 outFragColor;
 
 const float NEAR_PLANE = 0.1f; //todo: specialization const
 const float FAR_PLANE = 256.0f; //todo: specialization const 
-// Consts should help improve performance
-const float rayStep = 5.0;
-const float minRayStep = 0.1;
-const float maxSteps = 100;
-const float searchDist = 10;
-const float searchDistInv = 0.1;
-const int numBinarySearchSteps = 50;
-const float maxDDepth = 1.0;
-const float maxDDepthInv = 1.0;
-const float cb_zThickness = 0.3;
-const float reflectionSpecularFalloffExponent = 3.0;
-float g_depthbias = 0.001f;
-
-vec4 viewToNDC(vec4 position) {
-    vec4 hs =ubo.perspective * position;
-    return hs / hs.w;
-}
 
 float linearDepth(float depth)
 {
@@ -51,27 +34,27 @@ float frontDepth(vec2 uv)
     return  -fdepth;
 }
 
-vec4 RayCast(vec3 dir, inout vec3 hitCoord, out float dDepth)
-{
-    dir *= rayStep;
-    float depth;
-    for(int i = 0; i < maxSteps; i++)
-    {
-        hitCoord += dir;
-        vec4 projectedCoord = ubo.perspective * vec4(hitCoord, 1.0);
-        projectedCoord.xy /= projectedCoord.w;
-        projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+// vec4 RayCast(vec3 dir, inout vec3 hitCoord, out float dDepth)
+// {
+//     dir *= rayStep;
+//     float depth;
+//     for(int i = 0; i < maxSteps; i++)
+//     {
+//         hitCoord += dir;
+//         vec4 projectedCoord = ubo.perspective * vec4(hitCoord, 1.0);
+//         projectedCoord.xy /= projectedCoord.w;
+//         projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
 
-        depth = texture(samplerPositionDepth, projectedCoord.xy).z;
-        float fdepth = frontDepth(projectedCoord.xy);
-        float thickness = -depth +fdepth;
-        dDepth = hitCoord.z - depth;
+//         depth = texture(samplerPositionDepth, projectedCoord.xy).z;
+//         float fdepth = frontDepth(projectedCoord.xy);
+//         float thickness = -depth +fdepth;
+//         dDepth = hitCoord.z - depth;
         
-        if(hitCoord.z>depth && hitCoord.z <fdepth)
-            return vec4(vec3(vec2( projectedCoord.xy), dDepth), 1.0);
-    }
-    return vec4(0.0, 0.0, 0.0, 0.0);
-}
+//         if(hitCoord.z>depth && hitCoord.z <fdepth)
+//             return vec4(vec3(vec2( projectedCoord.xy), dDepth), 1.0);
+//     }
+//     return vec4(0.0, 0.0, 0.0, 0.0);
+// }
 
 float PDnrand(in vec2 n) 
 {
@@ -83,106 +66,80 @@ float PDsrand(in vec2 n)
 	return PDnrand(n) * 2 - 1;
 }
 
-
 float maxRegenCount = 15.0;
 float surfaceMargin = 0.19;
-float rayTraceStride =3.7;
+float rayTraceStride =1.0;
 float rayTraceInitOffset =2.0;
 float rayTraceMaxStep = 200.0;
 float rayTraceHitThickness =0.05;
-
-
-
+vec2 coord;
+float ReconstructLinearDepth(vec2 uv)
+{
+    float fdepth =texture(frontZbuffer,uv).r;
+	return -1.0f * 0.1  / fdepth;
+}
+float ReconstructLinearbDepth(vec2 uv)
+{
+    float fdepth =texture(samplerPositionDepth,uv).w;
+	return -1.0f * 0.1  / fdepth;
+}
 
 
 
 void main() 
 {
 
-    vec4 reflectColor = vec4(0.0, 0.0, 0.0, 0.0f);
+    vec4 reflectColor = vec4(0.0, 0.0, 0.0, 0.0);
     vec2 screenSize = vec2(1280.,720.);
-
-	vec3 rayOrigin = texture(samplerPositionDepth, inUV).rgb;
+    vec2 texcoord = inUV;
+	vec3 v0 = texture(samplerPositionDepth, inUV).rgb;
 	vec3 normal = normalize(texture(samplerNormal, inUV).rgb * 2.0 - 1.0);
-    vec3 eyeDir   = normalize(rayOrigin);
-    
+    vec3 eyeDir   = normalize(v0);
+    float csNearPlane = 0.1;
     vec3 rayDir =  normalize(reflect(eyeDir,normal));
 
     vec2 origin = inUV * screenSize;
- 
-    vec3 rayendPoint = rayOrigin + rayDir * FAR_PLANE;
+    float maxDistance = 200.0f;
+   
 
-    vec4 sceneStart = ubo.perspective * vec4(rayOrigin, 1.0);
+    float rayLength = (v0.z + rayDir.z * maxDistance > csNearPlane) ? (csNearPlane - v0.z) / rayDir.z : maxDistance;
 
-    vec4 sceneEnd =   ubo.perspective * vec4(rayendPoint, 1.0);
+     vec3 v1 = v0 + rayDir * (rayLength);
+    vec4 p0 = ubo.perspective * vec4(v0, 1.0);
+
+    vec4 p1 =   ubo.perspective * vec4(v1, 1.0);
 
     bool permute = false;
     // 透视纠正
 
-    float ks = 1.0 / sceneStart.w;
-    float kd = 1.0 /sceneEnd.w;
+    float k0 = 1.0 / p0.w;
+    float k1 = 1.0 /p1.w;
 
-    sceneStart *=ks;
-    sceneEnd *=kd;
+    p0 *=k0;
+    p1 *=k1;
 
-    rayOrigin *=ks;
-    rayendPoint *=kd;
+    v0 *=k0;
+    v1 *=k1;
 
-    sceneStart.xy = sceneStart.xy * 0.5 + 0.5;
-    sceneEnd.xy = sceneEnd.xy * 0.5 + 0.5;
+    p0.xy = p0.xy * 0.5 + 0.5;
+    p1.xy = p1.xy * 0.5 + 0.5;
     
-    sceneStart.xy *= screenSize;
-    sceneEnd.xy *=screenSize;
+    p0.xy *= screenSize;
+    p1.xy *=screenSize;
     
-    vec2 sceneRayDir = sceneEnd.xy - sceneStart.xy;
+    vec2 sceneRayDir = p1.xy - p0.xy;
    
     float sqDistance = dot(sceneRayDir,sceneRayDir);
 
-    sceneEnd.xy += step(sqDistance, 0.0001f) * vec2(0.01f);
+    p1.xy += step(sqDistance, 0.0001f) * vec2(0.01f);
     
-    float divisions = length(sceneEnd.xy - sceneStart.xy);
+    float divisions = length(p1.xy - p0.xy);
 	
-	vec3 dV = (rayendPoint - rayOrigin) / divisions;
-	float dK = (kd - ks) / divisions;
-	vec2 traceDir = (sceneEnd.xy - sceneStart.xy) / divisions;
-    float MAX_STEPS = 400.;
-	float maxSteps = min(divisions, MAX_STEPS);
-    float t =1.0;
-    vec2 coord;
-    vec2 texcoord;
-	while (t < maxSteps)
-	{
-		coord = origin + traceDir * t;
-		if (coord.x > screenSize.x || coord.y > screenSize.y || coord.x < 0 || coord.y < 0)
-		{
-			break;
-		}
-
-		float curDepth = (rayOrigin + dV * t).z;
-		float k = ks + dK * t;
-		curDepth /= k;
-		texcoord = coord / screenSize;
-
-		float storeFrontDepth = frontDepth(texcoord);
-		float storeBackDepth = texture(samplerPositionDepth, texcoord).z;
-		
-
-		if ((curDepth < storeFrontDepth) && ((curDepth - storeFrontDepth) >= (storeBackDepth - storeFrontDepth)))
-		{
-			reflectColor =  texture(samplerColor, texcoord);	
-			reflectColor.a = 0.4;
-			break;	
-		}
-		t++;
-	}
-
-
-
 
     // float stepDirection = sign(sceneRayDir.x);
     // float stepInterval = stepDirection / sceneRayDir.x;
 
-    // vec3 dQ = (rayendPoint - rayOrigin) * stepInterval * rayTraceStride;
+    // vec3 dQ = (v1 - v0) * stepInterval * rayTraceStride;
 	// float dk = (kd - ks) * stepInterval * rayTraceStride;
 	// vec2 dP = vec2(stepDirection, sceneRayDir.y * stepInterval) * rayTraceStride;
 
@@ -190,54 +147,54 @@ void main()
 	// float jitter = PDsrand(vec2(inUV));
 	// float init = rayTraceInitOffset ;
 
-	// vec3 Q = rayOrigin + dQ * init;
+	// vec3 Q = v0 + dQ * init;
 	// float k = ks + dk * init;
-	// vec2 P = sceneStart.xy + dP * init;
+	// vec2 P = p0.xy + dP * init;
 
-    // float end = sceneEnd.x * stepDirection;
+    // float end = p1.x * stepDirection;
 	// float stepCount = 0.0f;
-
-    // float prevZMax = rayOrigin.z;
-	// float ZMin = prevZMax;
-	// float ZMax = prevZMax;
-	// float sampleZ = prevZMax - 100000;
-
-
-    // vec2 hit;
-
-   	// for (;((P.x * stepDirection) <= end) &&
-	// 		(stepCount <= rayTraceMaxStep - 1) &&
-	// 		((ZMax > sampleZ) || (ZMin < sampleZ - rayTraceHitThickness)) && 
-	// 		sampleZ != 0.0f;
-	// 		P += dP, Q.z += dQ.z, k += dk, stepCount++)
-	// {
-	// 	ZMin = prevZMax;
-	// 	ZMax = (Q.z + dQ.z * 0.5f) / (k + dk * 0.5f);
-	// 	prevZMax = ZMax;
-
-	// 	if (ZMin < ZMax)
-	// 	{
-	// 		float t = ZMin;
-	// 		ZMin = ZMax;
-	// 		ZMax = t;
-	// 	}
-
-	// 	hit = permute ? P.yx : P;
-
-		
-    //     float depth = texture(samplerPositionDepth, hit).z;
-	// 	sampleZ = depth;
-	// }
    
-    // vec3 hitNormal = normalize(texture(samplerNormal, hit).rgb * 2.0 - 1.0);
-    // vec4 rayHitInfo;
-    
-	// rayHitInfo.rg = hit;
-    // rayHitInfo.b = sampleZ;
-    // rayHitInfo.a = float((ZMax < sampleZ) && (ZMin > sampleZ - rayTraceHitThickness) && (dot(hitNormal, rayDir) < 0));
-    vec4 color =  texture(samplerColor, inUV);
+  
+    vec2 hit;
+    float mask = 0.0;
 
-         outFragColor =reflectColor;
+	vec3 dV = (v1 - v0) / divisions;
+	float dK = (k1 - k0) / divisions;
+	vec2 traceDir = (p1.xy - p0.xy) / divisions;
+    float MAX_STEPS = 500.;
+	float maxSteps = min(divisions, MAX_STEPS);
+    float t =1.0;
+	while (t < 500.)
+	{
+		coord = origin + traceDir * t * 5.0;
+		if (coord.x > screenSize.x || coord.y > screenSize.y || coord.x < 0 || coord.y < 0)
+		{
+			break;
+		}
+ 
+		float curDepth = (v0 + dV * t).z;
+		float k = k0 + dK * t;
+		curDepth /= k;
+		texcoord = (coord) / screenSize;
+		float storeFrontDepth = texture(samplerPositionDepth, texcoord).z;
+		
+        float storeBackDepth = ReconstructLinearDepth(texcoord);
+		
+		if ((curDepth > storeFrontDepth) )
+		{
+			reflectColor = texture(samplerColor, texcoord);	
+			reflectColor.a = 0.4;
+			break;	
+		}
+		t++;
+	}
+ 
+
+   
+        vec4 color =  texture(samplerColor, inUV);
+        outFragColor =reflectColor;
+    
+         
   
     
 }
