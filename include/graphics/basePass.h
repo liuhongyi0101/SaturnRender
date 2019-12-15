@@ -60,4 +60,10 @@ public:
 		uint32_t width,
 		uint32_t height);
 	VkCommandBuffer createCommandBuffer(VkCommandBufferLevel level, bool begin, VkCommandPool &cmdPool);
+	void flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, bool free, VkCommandPool &cmdPool);
+
+private :
+	uint32_t testprivate;
+protected:
+	uint32_t testprotected;
 };

@@ -22,7 +22,7 @@
 	{
 
 		descriptorSets->cubeMap.loadFromFile(modelPath + "textures/hdr/pisa_cube.ktx", VK_FORMAT_R16G16B16A16_SFLOAT, vulkanDevice, queue);
-		descriptorSets->colorMap.loadFromFile(modelPath + "textures/vulkan_cloth_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, queue);
+		descriptorSets->colorMap.loadFromFile(modelPath + "textures/vulkan_cloth_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, queue, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL);
 		descriptorSets->pbrTex.albedoMap.loadFromFile(modelPath + "models/cerberus/albedo.ktx", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, queue);
 		descriptorSets->pbrTex.normalMap.loadFromFile(modelPath + "models/cerberus/normal.ktx", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, queue);
 		descriptorSets->pbrTex.aoMap.loadFromFile(modelPath + "models/cerberus/ao.ktx", VK_FORMAT_R8_UNORM, vulkanDevice, queue);
@@ -205,7 +205,7 @@
 		submitInfo.pCommandBuffers = &shadowMapPass->commandBuffer;
 		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
 
-		// Gbuffer rendering
+		// Gbuffer gen
 		submitInfo.pWaitSemaphores = &shadowMapPass->semaphore;
 		submitInfo.pSignalSemaphores = &deferredPass->semaphore;
 		submitInfo.commandBufferCount = 1;
@@ -227,6 +227,16 @@
 		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
 
 		VulkanExampleBase::submitFrame();
+
+		vkWaitForFences(device, 1, &bloomFFT->compute.fence, VK_TRUE, UINT64_MAX);
+		vkResetFences(device, 1, &bloomFFT->compute.fence);
+
+		VkSubmitInfo computeSubmitInfo = vks::initializers::submitInfo();
+	
+		computeSubmitInfo.commandBufferCount = 1;
+		computeSubmitInfo.pCommandBuffers = &bloomFFT->compute.commandBuffer;
+
+		VK_CHECK_RESULT(vkQueueSubmit(bloomFFT->compute.queue, 1, &computeSubmitInfo, bloomFFT->compute.fence));
 
 	}
 	 void Renderer::render()
@@ -318,8 +328,6 @@
 		vks::initializers::descriptorImageInfo(prezPass->colorSampler, prezPass->prezRtFrameBuffer.prezRtAttachment.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
 		};
 		
-
-		
 		std::vector<VkDescriptorImageInfo>	IblImageDescriptors = {
 		irradianceCube->textures.irradianceCube.descriptor,
 		irradianceCube->textures.prefilteredCube.descriptor,
@@ -328,14 +336,15 @@
 
 		deferredShading->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors, IblImageDescriptors);
 		ssrPass->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors);
-
-
+		bloomFFT->prepareCompute(descriptorSets->descriptorPool, imageDescriptors[4]);
+	
 		ssaoPass->buildDeferredCommandBuffer(pipeline);
 
 		prezPass->buildCommandBuffer(ssaoPass->cmdBuffer, sceneGraph->models.nodes["samplescene.dae"].vertices.buffer, sceneGraph->models.nodes["samplescene.dae"].indices.buffer, sceneGraph->models.nodes["samplescene.dae"].indexCount);
 		deferredShading->buildCommandBuffer(ssaoPass->cmdBuffer);
+		bloomFFT->buildComputeCommandBuffer();
 		// ssr
-		ssrPass->buildCommandBuffer(ssaoPass->cmdBuffer);
+	//	ssrPass->buildCommandBuffer(ssaoPass->cmdBuffer);
 		VK_CHECK_RESULT(vkEndCommandBuffer(ssaoPass->cmdBuffer));
 	}
 	void Renderer::loadModule() {
@@ -408,5 +417,9 @@
 		glm::mat4 mvp = camera.matrices.perspective * camera.matrices.view;
 		prezPass->createUniformBuffers(queue, mvp);
 		prezPass->wirteDescriptorSets(descriptorSets->descriptorPool);
+
+		bloomFFT = std::make_shared<BloomFFT>(vulkanDevice);
+		bloomFFT->prepareTextureTarget(1024,1024,cmdPool,queue);
+		
 	}
 
