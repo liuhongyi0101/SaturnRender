@@ -48,7 +48,7 @@ void BasePass::createAttachment(
 	image.arrayLayers = 1;
 	image.samples = VK_SAMPLE_COUNT_1_BIT;
 	image.tiling = VK_IMAGE_TILING_OPTIMAL;
-	image.usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT;
+	image.usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT  | VK_IMAGE_USAGE_STORAGE_BIT;
 
 	VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
 	VkMemoryRequirements memReqs;
@@ -92,4 +92,28 @@ VkCommandBuffer BasePass::createCommandBuffer(VkCommandBufferLevel level, bool b
 	}
 
 	return cmdBuffer;
+}
+
+
+void BasePass::flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, bool free, VkCommandPool &cmdPool)
+{
+	if (commandBuffer == VK_NULL_HANDLE)
+	{
+		return;
+	}
+
+	VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
+	VK_CHECK_RESULT(vkQueueWaitIdle(queue));
+
+	if (free)
+	{
+		vkFreeCommandBuffers(device, cmdPool, 1, &commandBuffer);
+	}
 }
