@@ -7,9 +7,9 @@ public:
 	
 	void createDescriptorsLayouts(VkDescriptorPool &descriptorPool);
 	void createPipeline(VkPipelineVertexInputStateCreateInfo &vertexInputState);
-	void createUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm::mat4 &view, glm::mat4 &lightSpace);
+	void createUniformBuffers(VkQueue queue);
 	void wirteDescriptorSets(VkDescriptorPool &descriptorPool, VkDescriptorImageInfo &shadowMapTexDescriptor);
-	void updateUniformBufferMatrices(glm::mat4 &perspective, glm::mat4 &view, glm::mat4 &lightSpace);
+	void updateUniformBuffer(int direction);
 
 	~BloomFFT();
 	void prepareTextureTarget( uint32_t width, uint32_t height, VkCommandPool &cmdPool,VkQueue queue);
@@ -23,12 +23,24 @@ public:
 		VkFence fence;								// Synchronization fence to avoid rewriting compute CB if still in use
 		VkDescriptorSetLayout descriptorSetLayout;	// Compute shader binding layout
 		VkDescriptorSet descriptorSet;				// Compute shader bindings
+		VkDescriptorSet descriptorSetOut;				// Compute shader bindings
 		VkPipelineLayout pipelineLayout;			// Layout of the compute pipeline
 		std::vector<VkPipeline> pipelines;			// Compute pipelines for image filters
 		int32_t pipelineIndex = 0;					// Current image filtering compute pipeline index
 		uint32_t queueFamilyIndex;					// Family index of the graphics queue, used for barriers
 	} compute;
 	vks::Texture2D textureComputeTarget;
+	vks::Texture2D textureComputeTargetOut;
 private:
+
+	struct UBOParams {
+
+		int direction;
+		float scale;
+		float strength;
+
+	} uboParams;
+
+	vks::Buffer uniformBuffers;
 
 };

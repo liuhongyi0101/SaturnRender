@@ -419,7 +419,7 @@
 		prezPass->wirteDescriptorSets(descriptorSets->descriptorPool);
 
 		bloomFFT = std::make_shared<BloomFFT>(vulkanDevice);
-		bloomFFT->prepareTextureTarget(1024,1024,cmdPool,queue);
+		bloomFFT->prepareTextureTarget(width,height,cmdPool,queue);
 		
 	}
 

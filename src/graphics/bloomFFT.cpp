@@ -56,7 +56,7 @@ void BloomFFT::getComputeQueue()
 void BloomFFT::prepareTextureTarget( uint32_t width, uint32_t height, VkCommandPool &cmdPool,VkQueue queue)
 {
 	
-
+	createUniformBuffers(queue);
 	// Prepare blit target texture
 	textureComputeTarget.width = width;
 	textureComputeTarget.height = height;
@@ -128,6 +128,70 @@ void BloomFFT::prepareTextureTarget( uint32_t width, uint32_t height, VkCommandP
 	textureComputeTarget.descriptor.imageView = textureComputeTarget.view;
 	textureComputeTarget.descriptor.sampler = textureComputeTarget.sampler;
 	textureComputeTarget.device = vulkanDevice;
+
+
+
+	// Prepare blit target texture
+	textureComputeTargetOut.width = width;
+	textureComputeTargetOut.height = height;
+
+	
+
+	VK_CHECK_RESULT(vkCreateImage(device, &imageCreateInfo, nullptr, &textureComputeTargetOut.image));
+
+	vkGetImageMemoryRequirements(device, textureComputeTargetOut.image, &memReqs);
+	memAllocInfo.allocationSize = memReqs.size;
+	memAllocInfo.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	VK_CHECK_RESULT(vkAllocateMemory(device, &memAllocInfo, nullptr, &textureComputeTargetOut.deviceMemory));
+	VK_CHECK_RESULT(vkBindImageMemory(device, textureComputeTargetOut.image, textureComputeTargetOut.deviceMemory, 0));
+
+	 layoutCmd = createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true, cmdPool);
+
+	textureComputeTargetOut.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	vks::tools::setImageLayout(
+		layoutCmd, textureComputeTargetOut.image,
+		VK_IMAGE_ASPECT_COLOR_BIT,
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		textureComputeTargetOut.imageLayout);
+
+	flushCommandBuffer(layoutCmd, queue, true, cmdPool);
+	sampler.maxLod = static_cast<float>(textureComputeTargetOut.mipLevels);
+	VK_CHECK_RESULT(vkCreateSampler(device, &sampler, nullptr, &textureComputeTargetOut.sampler));
+
+
+
+	
+	view.image = textureComputeTargetOut.image;
+	VK_CHECK_RESULT(vkCreateImageView(device, &view, nullptr, &textureComputeTargetOut.view));
+
+	// Initialize a descriptor for later use
+	textureComputeTargetOut.descriptor.imageLayout = textureComputeTargetOut.imageLayout;
+	textureComputeTargetOut.descriptor.imageView = textureComputeTargetOut.view;
+	textureComputeTargetOut.descriptor.sampler = textureComputeTargetOut.sampler;
+	textureComputeTarget.device = vulkanDevice;
+}
+
+
+void BloomFFT::createUniformBuffers(VkQueue queue)
+{
+	// Scene matrices
+	vulkanDevice->createBuffer(
+		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		&uniformBuffers,
+		sizeof(uboParams));
+
+	updateUniformBuffer(1);
+
+}void BloomFFT::updateUniformBuffer(int direction)
+{
+
+	uboParams.direction = 1;
+	uboParams.scale = 2.5;
+	uboParams.strength = 1.0;
+	VK_CHECK_RESULT(uniformBuffers.map());
+	uniformBuffers.copyTo(&uboParams, sizeof(uboParams));
+	uniformBuffers.unmap();
 }
 
 void BloomFFT::prepareCompute(VkDescriptorPool &descriptorPool, VkDescriptorImageInfo  &texDescriptor)
@@ -142,6 +206,7 @@ void BloomFFT::prepareCompute(VkDescriptorPool &descriptorPool, VkDescriptorImag
 		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, 0),
 		// Binding 1: Output image (write)
 		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, 1),
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT, 2),
 	};
 
 	VkDescriptorSetLayoutCreateInfo descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
@@ -158,23 +223,31 @@ void BloomFFT::prepareCompute(VkDescriptorPool &descriptorPool, VkDescriptorImag
 	VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &compute.descriptorSet));
 	std::vector<VkWriteDescriptorSet> computeWriteDescriptorSets = {
 		vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 0, &texDescriptor),
-		vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &textureComputeTarget.descriptor)
+		vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &textureComputeTarget.descriptor),
+		vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2, &uniformBuffers.descriptor)
 	};
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(computeWriteDescriptorSets.size()), computeWriteDescriptorSets.data(), 0, NULL);
 
+	VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &compute.descriptorSetOut));
+	
+	std::vector<VkWriteDescriptorSet> computeWriteDescriptorSetsOut = {
+		vks::initializers::writeDescriptorSet(compute.descriptorSetOut, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 0, &textureComputeTarget.descriptor),
+		vks::initializers::writeDescriptorSet(compute.descriptorSetOut, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &textureComputeTargetOut.descriptor),
+		vks::initializers::writeDescriptorSet(compute.descriptorSetOut, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2, &uniformBuffers.descriptor)
+	};
+	vkUpdateDescriptorSets(device, static_cast<uint32_t>(computeWriteDescriptorSetsOut.size()), computeWriteDescriptorSetsOut.data(), 0, NULL);
 	// Create compute shader pipelines
 	VkComputePipelineCreateInfo computePipelineCreateInfo =
 		vks::initializers::computePipelineCreateInfo(compute.pipelineLayout, 0);
 
-	// One pipeline for each effect
-	std::vector<std::string> shaderNames = { "emboss", "edgedetect", "sharpen" };
-	for (auto& shaderName : shaderNames) {
-		std::string fileName = getAssetPath + "computeshader/" + shaderName + ".comp.spv";
+	
+	
+		std::string fileName = getAssetPath + "computeshader/gaussianBlur.comp.spv";
 		computePipelineCreateInfo.stage = loadShader(fileName, VK_SHADER_STAGE_COMPUTE_BIT, device, shaderModules);
 		VkPipeline pipeline;
 		VK_CHECK_RESULT(vkCreateComputePipelines(device, 0, 1, &computePipelineCreateInfo, nullptr, &pipeline));
 		compute.pipelines.push_back(pipeline);
-	}
+	
 
 	// Separate command pool as queue family for compute may be different than graphics
 	VkCommandPoolCreateInfo cmdPoolInfo = {};
@@ -213,5 +286,11 @@ void BloomFFT::buildComputeCommandBuffer()
 
 	vkCmdDispatch(compute.commandBuffer, textureComputeTarget.width / 16, textureComputeTarget.height / 16, 1);
 
+	updateUniformBuffer(1);
+	vkCmdBindDescriptorSets(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipelineLayout, 0, 1, &compute.descriptorSetOut, 0, 0);
+	
+	vkCmdDispatch(compute.commandBuffer, textureComputeTarget.width / 16, textureComputeTarget.height / 16, 1);
 	vkEndCommandBuffer(compute.commandBuffer);
+
+
 }

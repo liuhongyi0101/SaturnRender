@@ -17,7 +17,7 @@ void Descriptor::_setupDescriptorPool()
 		vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 16),
 		vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 18),
 		// Compute pipelines uses a storage image for image reads and writes
-		vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 2),
+		vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 4),
 	};
 
 	VkDescriptorPoolCreateInfo descriptorPoolInfo =

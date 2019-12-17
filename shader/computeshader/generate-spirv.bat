@@ -1,4 +1,4 @@
-glslangvalidator -V -H emboss.comp -o emboss.comp.spv
+glslangvalidator -V  gaussianBlur.comp -o gaussianBlur.comp.spv
 
 
 
