@@ -137,7 +137,7 @@ public:
 	void prepareUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm::mat4 &view, glm::vec4& cameraPos, glm::vec4& lightpos);
 	void updateUniformBufferSSAOParams(glm::mat4 &perspective, glm::vec4 &cameraPos,glm::vec4 &lightPos);
 	void updateUniformBufferMatrices(glm::mat4 &perspective, glm::mat4 &view);
-	void preparePipelines(std::shared_ptr<VertexDescriptions> vdo, VkRenderPass renderPass);
+	void preparePipelines(std::shared_ptr<VertexDescriptions> vdo);
 	void compositionSet(vks::TextureCubeMap &IrradianceMap, vks::TextureCubeMap &prefilteredCube, vks::Texture2D &lutMap,
 		VkImageView positionView, VkImageView normalView, VkImageView colorView);
 #pragma endregion

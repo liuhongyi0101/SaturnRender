@@ -508,7 +508,7 @@ void SsaoPass::updateUniformBufferSSAOParams(glm::mat4 &perspective,glm::vec4 &c
 	uniformBuffers.ssaoParams.copyTo(&uboSSAOParams, sizeof(uboSSAOParams));
 	uniformBuffers.ssaoParams.unmap();
 }
-void SsaoPass::preparePipelines(std::shared_ptr<VertexDescriptions> vdo, VkRenderPass renderPass)
+void SsaoPass::preparePipelines(std::shared_ptr<VertexDescriptions> vdo)
 {
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
 	VkPipelineRasterizationStateCreateInfo rasterizationState = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE, 0);
@@ -527,7 +527,7 @@ void SsaoPass::preparePipelines(std::shared_ptr<VertexDescriptions> vdo, VkRende
 	// Empty vertex input state for fullscreen passes
 	VkPipelineVertexInputStateCreateInfo emptyVertexInputState = vks::initializers::pipelineVertexInputStateCreateInfo();
 
-	VkGraphicsPipelineCreateInfo pipelineCreateInfo = vks::initializers::pipelineCreateInfo(pipelineLayouts.composition, renderPass, 0);
+	VkGraphicsPipelineCreateInfo pipelineCreateInfo = vks::initializers::pipelineCreateInfo(pipelineLayouts.ssao, frameBuffers.ssao.renderPass, 0);
 	pipelineCreateInfo.pVertexInputState = &emptyVertexInputState;
 	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
 	pipelineCreateInfo.pRasterizationState = &rasterizationState;
@@ -541,8 +541,8 @@ void SsaoPass::preparePipelines(std::shared_ptr<VertexDescriptions> vdo, VkRende
 
 	
 	shaderStages[0] = loadShader(getAssetPath + "ssao/fullscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT,device, shaderModules);
-	shaderStages[1] = loadShader(getAssetPath + "ssao/composition.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT,device, shaderModules);
-	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipelines.composition));
+//	shaderStages[1] = loadShader(getAssetPath + "ssao/composition.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT,device, shaderModules);
+//	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipelines.composition));
 
 	// SSAO Pass
 	{

@@ -15,9 +15,9 @@ void Pipeline::createPipelineCache(VkDevice device)
 	pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 	VK_CHECK_RESULT(vkCreatePipelineCache(device, &pipelineCacheCreateInfo, nullptr, &pipelineCache));
 }
-void Pipeline::setupPipeline(VkDevice device, VkRenderPass renderPass,VkPipelineLayout pipelineLayout, std::shared_ptr<VertexDescriptions> vdo_)
+void Pipeline::setupPipeline(VkDevice device, std::shared_ptr<VertexDescriptions> vdo_)
 {
-	this->pipelineLayout = pipelineLayout;
+	
 	pipelineCreateInfo =
 		vks::initializers::pipelineCreateInfo(pipelineLayout, renderPass);
 
@@ -32,13 +32,13 @@ void Pipeline::setupPipeline(VkDevice device, VkRenderPass renderPass,VkPipeline
 	pipelineCreateInfo.pStages = shaderStages.data();
 	pipelineCreateInfo.pVertexInputState = &vdo_->vertices.inputState;
 
-	createPipeline(device, std::string("pbrbasic/skybox.vert.spv"), std::string("pbrbasic/skybox.frag.spv"), depthstate, pipelines["skyPipeline"]);
-	// Flip cull mode
-	rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
-	// Enable depth test and write
-	 depthstate = { 1, 1 };
-	createPipeline(device, std::string("pbrbasic/pbr.vert.spv"), std::string("pbrbasic/pbr.frag.spv"),  depthstate, pipelines["opaquePipeline"]);
-	createPipeline(device, std::string("pbrbasic/pbr.vert.spv"), std::string("pbrbasic/pbrNoTex.frag.spv"), depthstate, pipelines["NoTexPipeline"]);
+	//createPipeline(device, std::string("pbrbasic/skybox.vert.spv"), std::string("pbrbasic/skybox.frag.spv"), depthstate, pipelines["skyPipeline"]);
+	//// Flip cull mode
+	//rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
+	//// Enable depth test and write
+	// depthstate = { 1, 1 };
+	//createPipeline(device, std::string("pbrbasic/pbr.vert.spv"), std::string("pbrbasic/pbr.frag.spv"),  depthstate, pipelines["opaquePipeline"]);
+	//createPipeline(device, std::string("pbrbasic/pbr.vert.spv"), std::string("pbrbasic/pbrNoTex.frag.spv"), depthstate, pipelines["NoTexPipeline"]);
 	
 
 	
@@ -47,8 +47,24 @@ void Pipeline::setupPipeline(VkDevice device, VkRenderPass renderPass,VkPipeline
 	//pipelineCreateInfo.pVertexInputState = &vdo_->vertices.inputState;
 
 }
-void Pipeline::createShadowPipeline(VkDevice device,VkRenderPass renderPass, VkPipelineLayout pipelineLayout)
+void Pipeline::createShadowPipeline(VkDevice device,VkRenderPass renderPass, VkPipelineLayout pipelineLayout, std::shared_ptr<VertexDescriptions> vdo)
 {
+	pipelineCreateInfo =
+		vks::initializers::pipelineCreateInfo(pipelineLayout, renderPass);
+
+	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
+	pipelineCreateInfo.pRasterizationState = &rasterizationState;
+	pipelineCreateInfo.pColorBlendState = &colorBlendState;
+	pipelineCreateInfo.pMultisampleState = &multisampleState;
+	pipelineCreateInfo.pViewportState = &viewportState;
+	pipelineCreateInfo.pDepthStencilState = &depthStencilState;
+	pipelineCreateInfo.pDynamicState = &dynamicState;
+	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+	pipelineCreateInfo.pStages = shaderStages.data();
+	pipelineCreateInfo.pVertexInputState = &vdo->vertices.inputState;
+
+
+
 	// No blend attachment states(no color attachments used)
 	rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
 	colorBlendState.attachmentCount = 0;

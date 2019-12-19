@@ -215,6 +215,13 @@ void BloomFFT::prepareCompute(VkDescriptorPool &descriptorPool, VkDescriptorImag
 	VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo =
 		vks::initializers::pipelineLayoutCreateInfo(&compute.descriptorSetLayout, 1);
 
+	VkPushConstantRange pushConstantRange =
+		vks::initializers::pushConstantRange(
+			VK_SHADER_STAGE_VERTEX_BIT,
+			sizeof(uboParams),
+			0);
+	pPipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+	pPipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 	VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &compute.pipelineLayout));
 
 	VkDescriptorSetAllocateInfo allocInfo =
@@ -280,13 +287,30 @@ void BloomFFT::buildComputeCommandBuffer()
 	VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
 
 	VK_CHECK_RESULT(vkBeginCommandBuffer(compute.commandBuffer, &cmdBufInfo));
-
+	uboParams.direction = 1;
+	uboParams.scale = 4.5;
+	uboParams.strength = 1.0;
+	vkCmdPushConstants(
+		compute.commandBuffer,
+		compute.pipelineLayout,
+		VK_SHADER_STAGE_COMPUTE_BIT,
+		0,
+		sizeof(uboParams),
+		&uboParams);
 	vkCmdBindPipeline(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipelines[compute.pipelineIndex]);
 	vkCmdBindDescriptorSets(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipelineLayout, 0, 1, &compute.descriptorSet, 0, 0);
 
+
 	vkCmdDispatch(compute.commandBuffer, textureComputeTarget.width / 16, textureComputeTarget.height / 16, 1);
 
-	updateUniformBuffer(1);
+	uboParams.direction = 0;
+	vkCmdPushConstants(
+		compute.commandBuffer,
+		compute.pipelineLayout,
+		VK_SHADER_STAGE_COMPUTE_BIT,
+		0,
+		sizeof(uboParams),
+		&uboParams);
 	vkCmdBindDescriptorSets(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipelineLayout, 0, 1, &compute.descriptorSetOut, 0, 0);
 	
 	vkCmdDispatch(compute.commandBuffer, textureComputeTarget.width / 16, textureComputeTarget.height / 16, 1);

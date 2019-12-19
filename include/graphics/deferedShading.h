@@ -8,7 +8,7 @@ public:
 	~DeferredShading();
 
 	void createRenderPass(uint32_t width, uint32_t  height);
-	void createFrameBuffer();
+	void createFrameBuffer(VkImageView &depthView);
 	void createPipeline();
 	void createDescriptorsLayouts();
 	void wirteDescriptorSets(VkDescriptorPool &descriptorPool, std::vector<VkDescriptorImageInfo> &texDescriptor, std::vector<VkDescriptorImageInfo> &iblTexDescriptor);

@@ -11,10 +11,10 @@ public:
 	~Pipeline();
 	std::map<std::string, VkPipeline> pipelines;
 	void createPipelineCache(VkDevice device);
-	void setupPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout, std::shared_ptr<VertexDescriptions> vdo_);
+	void setupPipeline(VkDevice device,  std::shared_ptr<VertexDescriptions> vdo_);
 	void createPipeline(VkDevice device, std::string &vertshader, std::string &fragshader, std::array<int, 2> &depthstate, VkPipeline &pipeline);
 	void createSsaoPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout);
-	void createShadowPipeline(VkDevice device, VkRenderPass renderPass,VkPipelineLayout pipelineLayout);
+	void createShadowPipeline(VkDevice device, VkRenderPass renderPass,VkPipelineLayout pipelineLayout, std::shared_ptr<VertexDescriptions> vdo);
 	void createGbufferPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout);
 	void createSsaoBlurPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout);
 	void createQuadPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout, std::string pipelinename);
