@@ -228,14 +228,7 @@ public:
 
 	// Creates a new (graphics) command pool object storing command buffers
 	void createCommandPool();
-	// Setup default depth and stencil views
-	virtual void setupDepthStencil();
-	// Create framebuffers for all requested swap chain images
-	// Can be overriden in derived class to setup a custom framebuffer (e.g. for MSAA)
-	virtual void setupFrameBuffer();
-	// Setup a default render pass
-	// Can be overriden in derived class to setup a custom render pass (e.g. for MSAA)
-	virtual void setupRenderPass();
+
 
 	/** @brief (Virtual) Called after the physical device features have been read, can be used to set features to enable on the device */
 	virtual void getEnabledFeatures();
@@ -247,8 +240,8 @@ public:
 
 	// Check if command buffers are valid (!= VK_NULL_HANDLE)
 	bool checkCommandBuffers();
-	// Create command buffers for drawing commands
-	void createCommandBuffers();
+
+
 	// Destroy all command buffers and set their handles to VK_NULL_HANDLE
 	// May be necessary during runtime if options are toggled 
 	void destroyCommandBuffers();

@@ -6,11 +6,14 @@
 layout (binding = 0) uniform sampler2D samplerposition;
 layout (binding = 1) uniform sampler2D samplerNormal;
 layout (binding = 2) uniform sampler2D samplerAlbedo;
-layout (binding = 3) uniform sampler2D samplerSSAOBlur;
-layout (binding = 4) uniform samplerCube samplerIrradiance;
-layout (binding = 5) uniform samplerCube prefilteredMap;
-layout (binding = 6) uniform sampler2D samplerBRDFLUT;
-layout (binding = 7) uniform UBO 
+layout (binding = 3) uniform sampler2D samplerMix;
+layout (binding = 4) uniform sampler2D samplerSSAOBlur;
+
+
+layout (binding = 5) uniform samplerCube samplerIrradiance;
+layout (binding = 6) uniform samplerCube prefilteredMap;
+layout (binding = 7) uniform sampler2D samplerBRDFLUT;
+layout (binding = 8) uniform UBO 
 {
 	vec4 lightpos;
 } uboParams;
@@ -109,19 +112,23 @@ void main()
 	vec3 R = reflect(-V, N); 
 	float ssao =  texture(samplerSSAOBlur, inUV).r;
 
+	vec3 lightPos = vec3(0.0);
+	vec3 L = normalize(lightPos - fragPos);
 	
-	vec3 L = normalize(uboParams.lightpos.xyz - fragPos);
-	
+	vec4 mixt = texture(samplerMix, inUV);
 
-	float metallic = 1.0;
-	float roughness =0.1;
+	float metallic = mixt.g;
+	float roughness =mixt.r;
+	float ao = mixt.b;
 
 	vec3 F0 = vec3(0.04); 
 	F0 = mix(F0, ALBEDO, metallic);
 
+
+		
 	vec3 Lo = vec3(0.0);
 		 Lo += specularContribution(L, V, N, F0, metallic, roughness);
-
+		 Lo /=dot(L,L);
 	vec2 brdf = texture(samplerBRDFLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
 	vec3 reflection = prefilteredReflection(R, roughness).rgb;	
 	vec3 irradiance = texture(samplerIrradiance, N).rgb;
@@ -140,8 +147,8 @@ void main()
 	float nol = max(0.0,dot(L, N));
 
 	vec3 ambient = (kD * diffuse )+ specular;
-	//float inshadow = filterPCF(inShadowCoord / inShadowCoord.w);
-	vec3 color = (ambient + Lo)  *pow(ssao,4) * albedo.w;
+	
+	vec3 color = (ambient * ao + Lo)  *pow(ssao,4) * albedo.w;
 
 	// Tone mapping
 	color = Uncharted2Tonemap(color * 3.0);

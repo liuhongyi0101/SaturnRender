@@ -146,11 +146,7 @@ void OutputPass::createPipeline()
 	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 	pipelineCreateInfo.pStages = shaderStages.data();
 
-	std::array<VkPipelineColorBlendAttachmentState, 1> blendAttachmentStates = {
-		vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE),
-	};
-	colorBlendState.attachmentCount = static_cast<uint32_t>(blendAttachmentStates.size());
-	colorBlendState.pAttachments = blendAttachmentStates.data();
+
 
 	shaderStages[0] = loadShader(getAssetPath + "common/fullscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT, device, shaderModules);
 	shaderStages[1] = loadShader(getAssetPath + "output/output.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, device, shaderModules);

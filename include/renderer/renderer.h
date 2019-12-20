@@ -12,7 +12,7 @@
 #include "renderer/IrradianceCube.h"
 #include "renderer/shadowMapPass.h"
 #include "renderer/ssaoPass.h"
-#include "graphics/deferred.h"
+#include "graphics/gbufferPass.h"
 #include "graphics/skyboxPass.h"
 #include "graphics/ssrPass.h"
 #include "graphics/deferedShading.h"
@@ -48,7 +48,7 @@
 		std::shared_ptr<IrradianceCube> irradianceCube;
 		std::shared_ptr<ShadowMapPass> shadowMapPass;
 		std::shared_ptr<SsaoPass> ssaoPass;
-		std::shared_ptr<DeferredPass> deferredPass;
+		std::shared_ptr<GbufferPass> gbufferPass;
 		std::shared_ptr<SkyboxPass>  skyboxPass;
 		std::shared_ptr<SsrPass>  ssrPass;
 		std::shared_ptr<DeferredShading> deferredShading;
@@ -85,21 +85,12 @@
 		void updateUniformBufferShadowMap();
 	
 	
-		void buildCommandBuffers(VkRenderPass renderPass, std::vector<VkCommandBuffer>& drawCmdBuffers, std::vector<VkFramebuffer> &frameBuffers);
+		void buildCommandBuffers();
 		void prepare();
 		void PostProcessing();
 		void draw();
 
-		void setupFrameBuffer();
-
-		//void initApp();
-
-		//void renderObject(Model *model, Model::stride child_model);
-		//void renderObjects(Model *model);
 	
-		//void initCamera();
-
-		//virtual void getEnabledFeatures();
 	private:
 		//void destroyResource();
 	

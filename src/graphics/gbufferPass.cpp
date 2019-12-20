@@ -1,16 +1,16 @@
-#include "graphics/deferred.h"
+#include "graphics/gbufferPass.h"
 #include <array>
 #include "utils/loadshader.h"
-DeferredPass::DeferredPass(vks::VulkanDevice * vulkanDevice)
+GbufferPass::GbufferPass(vks::VulkanDevice * vulkanDevice)
 {
 	this->vulkanDevice = vulkanDevice;
 	this->device = vulkanDevice->logicalDevice;
 }
 
-DeferredPass::~DeferredPass()
+GbufferPass::~GbufferPass()
 {
 }
-void DeferredPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  height)
+void GbufferPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  height)
 {
 
 	const uint32_t ssaoWidth = width;
@@ -129,10 +129,10 @@ void DeferredPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  hei
 	sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 	VK_CHECK_RESULT(vkCreateSampler(device, &sampler, nullptr, &colorSampler));
 }
-void DeferredPass::createPipeline(VkPipelineVertexInputStateCreateInfo &vertexInputState)
+void GbufferPass::createPipeline(VkPipelineVertexInputStateCreateInfo &vertexInputState)
 {
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
-	VkPipelineRasterizationStateCreateInfo rasterizationState = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE, 0);
+	VkPipelineRasterizationStateCreateInfo rasterizationState = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE, 0);
 	VkPipelineColorBlendAttachmentState blendAttachmentState = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
 	VkPipelineColorBlendStateCreateInfo colorBlendState = vks::initializers::pipelineColorBlendStateCreateInfo(1, &blendAttachmentState);
 	VkPipelineDepthStencilStateCreateInfo depthStencilState = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
@@ -173,57 +173,7 @@ void DeferredPass::createPipeline(VkPipelineVertexInputStateCreateInfo &vertexIn
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipeline));
 	
 }
-//void DeferredPass::createDescriptorSetLayouts()
-//{
-//	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
-//	VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo;
-//	VkPipelineLayoutCreateInfo pipelineLayoutInfo;
-//	std::vector<VkDescriptorSetLayout> set_layouts;
-//	// Binding 0 : Vertex shader uniform buffer
-//	setLayoutBindings.push_back(vks::initializers::descriptorSetLayoutBinding(
-//		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-//		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-//		0));
-//	// Binding 1 : frag shader uniform buffer
-//	setLayoutBindings.push_back(vks::initializers::descriptorSetLayoutBinding(
-//		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-//		VK_SHADER_STAGE_FRAGMENT_BIT,
-//		1));
-//	// Binding 2:  frag shader image
-//	setLayoutBindings.push_back(vks::initializers::descriptorSetLayoutBinding(
-//		VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-//		VK_SHADER_STAGE_FRAGMENT_BIT,
-//		2));
-//	setLayoutBindings.push_back(vks::initializers::descriptorSetLayoutBinding(
-//		VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-//		VK_SHADER_STAGE_FRAGMENT_BIT,
-//		3));
-//	setLayoutBindings.push_back(vks::initializers::descriptorSetLayoutBinding(
-//		VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-//		VK_SHADER_STAGE_FRAGMENT_BIT,
-//		4));
-//	setLayoutBindings.push_back(vks::initializers::descriptorSetLayoutBinding(
-//		VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-//		VK_SHADER_STAGE_FRAGMENT_BIT,
-//		5));
-//	setLayoutBindings.push_back(vks::initializers::descriptorSetLayoutBinding(
-//		VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-//		VK_SHADER_STAGE_FRAGMENT_BIT,
-//		6));
-//	
-//	pipelineLayoutInfo = vks::initializers::pipelineLayoutCreateInfo();
-//	std::vector<VkPushConstantRange> pushConstantRanges = {
-//	vks::initializers::pushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::vec3), 0),
-//	vks::initializers::pushConstantRange(VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(MaterialPbr::PushBlock), sizeof(glm::vec3)),
-//	};
-//
-//	// Push constant ranges are part of the pipeline layout
-//	pipelineLayoutInfo.pushConstantRangeCount = 2;
-//	pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.data();
-//	VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
-//
-//}
-void DeferredPass::createDescriptorsLayouts(VkDescriptorPool &descriptorPool)
+void GbufferPass::createDescriptorsLayouts(VkDescriptorPool &descriptorPool)
 {
 	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
 	VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo;
@@ -232,7 +182,12 @@ void DeferredPass::createDescriptorsLayouts(VkDescriptorPool &descriptorPool)
 	// G-Buffer creation 
 	setLayoutBindings = {
 		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),								// VS UBO
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1),						// FS Color
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1),	
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2),
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3),
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 4),
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 5),
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 6),
 	};
 	setLayoutCreateInfo = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
 	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &setLayoutCreateInfo, nullptr, &descriptorSetLayout));
@@ -242,7 +197,7 @@ void DeferredPass::createDescriptorsLayouts(VkDescriptorPool &descriptorPool)
 
 
 }
-void DeferredPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool,VkDescriptorImageInfo &shadowMapTexDescriptor)
+void GbufferPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool, std::vector<VkDescriptorImageInfo> &texDescriptor)
 {
 	VkDescriptorSetAllocateInfo descriptorAllocInfo = vks::initializers::descriptorSetAllocateInfo(descriptorPool, nullptr, 1);
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
@@ -250,13 +205,18 @@ void DeferredPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool,VkDescri
 	VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &descriptorAllocInfo, &descriptorSet));
 	writeDescriptorSets = {
 		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.sceneMatrices.descriptor),
-		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1 , &shadowMapTexDescriptor),
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1 , &texDescriptor[0]),
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2 , &texDescriptor[1]),
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3 , &texDescriptor[2]),
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,4 , &texDescriptor[3]),
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,5 , &texDescriptor[4]),
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,6 , &texDescriptor[5]),
 	};
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
 
 
 }
-void DeferredPass::buildCommandBuffer(VkCommandPool cmdPool,VkBuffer vertexBuffer,VkBuffer indexBuffer,uint32_t indexCount)
+void GbufferPass::buildCommandBuffer(VkCommandPool cmdPool,VkBuffer vertexBuffer,VkBuffer indexBuffer,uint32_t indexCount)
 {
 	VkDeviceSize offsets[1] = { 0 };
 	cmdBuffer = createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, false, cmdPool);
@@ -305,7 +265,7 @@ void DeferredPass::buildCommandBuffer(VkCommandPool cmdPool,VkBuffer vertexBuffe
 	vkCmdEndRenderPass(cmdBuffer);
 	VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
 }
-void DeferredPass::createUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm::mat4 &view, glm::mat4 &lightSpace)
+void GbufferPass::createUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm::mat4 &view, glm::mat4 &lightSpace)
 {
 	// Scene matrices
 	vulkanDevice->createBuffer(
@@ -317,7 +277,7 @@ void DeferredPass::createUniformBuffers(VkQueue queue, glm::mat4 &perspective, g
 	updateUniformBufferMatrices(perspective, view,lightSpace);
 
 }
-void DeferredPass::updateUniformBufferMatrices(glm::mat4 &perspective, glm::mat4 &view,glm::mat4 &lightSpace)
+void GbufferPass::updateUniformBufferMatrices(glm::mat4 &perspective, glm::mat4 &view,glm::mat4 &lightSpace)
 {
 	uboSceneMatrices.projection = perspective;
 	uboSceneMatrices.view = view;

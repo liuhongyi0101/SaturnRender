@@ -62,13 +62,6 @@
 		descriptorSets->uboParams.lights[0].x = cos(glm::radians( 360.0f)) * 40.0f;
 		descriptorSets->uboParams.lights[0].y = -50.0f + sin(glm::radians( 360.0f)) * 20.0f;
 		descriptorSets->uboParams.lights[0].z = 25.0f + sin(glm::radians( 360.0f)) * 5.0f;
-		if (!paused)
-		{
-			//descriptorSets->uboParams.lights[0].x = sin(glm::radians(timer * 360.0f)) * 20.0f;
-			//descriptorSets->uboParams.lights[0].z = cos(glm::radians(timer * 360.0f)) * 20.0f;
-			/*descriptorSets->uboParams.lights[1].x = cos(glm::radians(timer * 360.0f)) * 20.0f;
-			descriptorSets->uboParams.lights[1].y = sin(glm::radians(timer * 360.0f)) * 20.0f;*/
-		}
 		memcpy(descriptorSets->uniformBuffers.params.mapped, &descriptorSets->uboParams, sizeof(descriptorSets->uboParams));
 	}
 	void Renderer::updateUniformBufferShadowMap()
@@ -84,34 +77,8 @@
 		memcpy(descriptorSets->uniformBuffers.shadowMapMvp.mapped, &descriptorSets->uboShadowMapMvpVS, sizeof(descriptorSets->uboShadowMapMvpVS));
 	}
 	
-	void Renderer::setupFrameBuffer()
-	{
-		//VkImageView attachments[2];
-
-		//// Depth/Stencil attachment is the same for all frame buffers
-		//
-		//attachments[1] = deferredPass->deferredFrameBuffers.depth.view;
-
-		//VkFramebufferCreateInfo frameBufferCreateInfo = {};
-		//frameBufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		//frameBufferCreateInfo.pNext = NULL;
-		//frameBufferCreateInfo.renderPass = renderPass;
-		//frameBufferCreateInfo.attachmentCount = 2;
-		//frameBufferCreateInfo.pAttachments = attachments;
-		//frameBufferCreateInfo.width = width;
-		//frameBufferCreateInfo.height = height;
-		//frameBufferCreateInfo.layers = 1;
-
-		//// Create frame buffers for every swap chain image
-		//frameBuffers.resize(swapChain.imageCount);
-		//for (uint32_t i = 0; i < frameBuffers.size(); i++)
-		//{
-		//	attachments[0] = swapChain.buffers[i].view;
-		//	VK_CHECK_RESULT(vkCreateFramebuffer(device, &frameBufferCreateInfo, nullptr, &frameBuffers[i]));
-		//}
-	}
 	
-	void Renderer::buildCommandBuffers(VkRenderPass renderPass, std::vector<VkCommandBuffer>& drawCmdBuffers, std::vector<VkFramebuffer> &frameBuffers)
+	void Renderer::buildCommandBuffers()
 	{
 		renderpassunit.renderPass = shadowMapPass->renderPass;
 		renderpassunit.frameBuffer = shadowMapPass->frameBuffer;
@@ -119,77 +86,28 @@
 		renderpassunit.height = shadowMapPass->height;
 		renderpassunit.width = shadowMapPass->width;
 		renderpassunit.commandBuffer = shadowMapPass->commandBuffer;
-		renderpassunit.models = sceneGraph->models.nodes["samplescene.dae"];
+		renderpassunit.models = sceneGraph->models.nodes[MODEL];
 		renderpassunit.pipelineFact = pipeline;
 		renderpassunit.pipelineLayout = pipelineLayout;
 
 		command->buildShadowMapCommandBuffer(renderpassunit);
 
-		renderpassunit.renderPass = renderPass;
-		renderpassunit.descriptorSet = descriptorSets->descriptorSet;
-		renderpassunit.descriptorSetSkybox = descriptorSets->descriptorSetSkybox;
-		renderpassunit.height = height;
-		renderpassunit.width = width;
-		renderpassunit.mat = material->materials[material->materialIndex];
-	
-
-		renderpassunit.descriptorSet = ssaoPass->descriptorSets.composition;
-		renderpassunit.pipelineLayout = ssaoPass->pipelineLayouts.composition;
-
-		VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
-
-		VkClearValue clearValues[1];
-		clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
-		//clearValues[1].depthStencil = { 1.0f, 0 };
-
-		VkRenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();
-		renderPassBeginInfo.renderPass = renderPass;
-		renderPassBeginInfo.renderArea.offset.x = 0;
-		renderPassBeginInfo.renderArea.offset.y = 0;
-		renderPassBeginInfo.renderArea.extent.width = width;
-		renderPassBeginInfo.renderArea.extent.height = height;
-		renderPassBeginInfo.clearValueCount = 1;
-		renderPassBeginInfo.pClearValues = clearValues;
-
-		for (int32_t i = 0; i < drawCmdBuffers.size(); ++i)
-		{
-			// Set target frame buffer
-			renderPassBeginInfo.framebuffer = frameBuffers[i];
-
-			VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers[i], &cmdBufInfo));
-
-			vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-			VkViewport viewport = vks::initializers::viewport((float)renderpassunit.width, (float)renderpassunit.height, 0.0f, 1.0f);
-			vkCmdSetViewport(drawCmdBuffers[i], 0, 1, &viewport);
-
-			VkRect2D scissor = vks::initializers::rect2D(renderpassunit.width, renderpassunit.height, 0, 0);
-			vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
-
-			vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, renderpassunit.pipelineLayout, 0, 1, &renderpassunit.descriptorSet, 0, NULL);
-
-			vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, renderpassunit.pipelineFact->pipelines["outputPipeline"]);
-			vkCmdDraw(drawCmdBuffers[i], 3, 1, 0, 0);
-			
-			
-			vkCmdEndRenderPass(drawCmdBuffers[i]);
-
-			VK_CHECK_RESULT(vkEndCommandBuffer(drawCmdBuffers[i]));
-		}
-		
+		//renderpassunit.mat = material->materials[material->materialIndex];
 	}
 	void Renderer::prepare()
 	{
-		deferredPass = std::make_shared<DeferredPass>(vulkanDevice);
-		deferredPass->createFramebuffersAndRenderPass(width, height);
+		gbufferPass = std::make_shared<GbufferPass>(vulkanDevice);
+		gbufferPass->createFramebuffersAndRenderPass(width, height);
 		VulkanExampleBase::prepare();
 		loadModule();
 		prepareUniformBuffers(vulkanDevice);
 		
 		pipeline->createShadowPipeline(device, shadowMapPass->renderPass, pipelineLayout, vdo);
+		buildCommandBuffers();
+		gbufferPass->buildCommandBuffer(cmdPool, sceneGraph->models.nodes[MODEL].vertices.buffer, sceneGraph->models.nodes[MODEL].indices.buffer, sceneGraph->models.nodes[MODEL].indexCount);
 		PostProcessing();
 		
-	//	buildCommandBuffers(renderPass, drawCmdBuffers, frameBuffers);
+		
 		prepared = true;
 	}
 	void Renderer::draw()
@@ -204,13 +122,13 @@
 
 		// Gbuffer gen
 		submitInfo.pWaitSemaphores = &shadowMapPass->semaphore;
-		submitInfo.pSignalSemaphores = &deferredPass->semaphore;
+		submitInfo.pSignalSemaphores = &gbufferPass->semaphore;
 		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &deferredPass->cmdBuffer;
+		submitInfo.pCommandBuffers = &gbufferPass->cmdBuffer;
 		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
 
 		// postprocess rendering
-		submitInfo.pWaitSemaphores = &deferredPass->semaphore;
+		submitInfo.pWaitSemaphores = &gbufferPass->semaphore;
 		submitInfo.pSignalSemaphores = &ssaoPass->semaphore;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &ssaoPass->cmdBuffer;
@@ -248,9 +166,10 @@
 		//	updateUniformBufferShadowMap();
 			updateUniformBuffers();
 			skyboxPass->updateUniformBuffer(camera.matrices.perspective, glm::mat4(glm::mat3(camera.matrices.view)));
-			ssaoPass->updateUniformBufferMatrices(camera.matrices.perspective,camera.matrices.view);
-		//	ssaoPass->updateUniformBufferSSAOParams(camera.matrices.perspective,glm::vec4(camera.position,1.0), descriptorSets->uboParams.lights[0]);
-			deferredPass->updateUniformBufferMatrices(camera.matrices.perspective, camera.matrices.view, descriptorSets->uboShadowMapMvpVS.depthMVP);
+		//	ssaoPass->updateUniformBufferSSAOParams(camera.matrices.perspective);
+			gbufferPass->updateUniformBufferMatrices(camera.matrices.perspective, camera.matrices.view, descriptorSets->uboShadowMapMvpVS.depthMVP);
+			glm::vec4 light = camera.matrices.view * descriptorSets->uboParams.lights[0];
+			deferredShading->updateUniformBufferMatrices(light);
 		}
 			
 		uiComponents.frameTimer = frameTimer;
@@ -292,16 +211,12 @@
 	void Renderer::PostProcessing()
 	{
 		ssaoPass = std::make_shared<SsaoPass>(vulkanDevice,cmdPool,width,height);
-		ssaoPass->prepareUniformBuffers(queue, camera.matrices.perspective,camera.matrices.view, glm::vec4(camera.position, 1.0), descriptorSets->uboParams.lights[0]);
-		ssaoPass->setupLayoutsAndDescriptors(deferredPass->deferredFrameBuffers.position.view, deferredPass->deferredFrameBuffers.normal.view, deferredPass->deferredFrameBuffers.albedo.view);
-		ssaoPass->compositionSet(irradianceCube->textures.irradianceCube, irradianceCube->textures.prefilteredCube, irradianceCube->textures.lutBrdf,
-			deferredPass->deferredFrameBuffers.position.view, deferredPass->deferredFrameBuffers.normal.view, deferredPass->deferredFrameBuffers.albedo.view);
+		ssaoPass->prepareUniformBuffers(queue, camera.matrices.perspective);
+		ssaoPass->setupLayoutsAndDescriptors(gbufferPass->deferredFrameBuffers.position.view, gbufferPass->deferredFrameBuffers.normal.view, gbufferPass->deferredFrameBuffers.albedo.view);
 		
 		ssaoPass->preparePipelines(vdo);
 	
-	//	pipeline->createQuadPipeline(device, renderPass, ssaoPass->pipelineLayouts.composition, "outputPipeline");
-		
-
+	
 		ssrPass = std::make_shared<SsrPass>(vulkanDevice); 
 		ssrPass->createFramebuffersAndRenderPass(width, height);
 		ssrPass->createDescriptorsLayouts();
@@ -310,16 +225,18 @@
 
 		deferredShading = std::make_shared<DeferredShading>(vulkanDevice);
 		deferredShading->createRenderPass(width, height);
-		deferredShading->createFrameBuffer(deferredPass->deferredFrameBuffers.depth.view);
+		deferredShading->createFrameBuffer(gbufferPass->deferredFrameBuffers.depth.view);
 		deferredShading->createDescriptorsLayouts();
 		deferredShading->createPipeline();
-		deferredShading->createUniformBuffers(queue, descriptorSets->uboParams.lights[0]);
+		glm::vec4 light= camera.matrices.view * descriptorSets->uboParams.lights[0];
+		deferredShading->createUniformBuffers(queue, light);
 
 
 		std::vector<VkDescriptorImageInfo>	imageDescriptors = {
-		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.position.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.normal.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, deferredPass->deferredFrameBuffers.albedo.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, gbufferPass->deferredFrameBuffers.position.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, gbufferPass->deferredFrameBuffers.normal.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, gbufferPass->deferredFrameBuffers.albedo.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+		vks::initializers::descriptorImageInfo(ssrPass->colorSampler, gbufferPass->deferredFrameBuffers.mix.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
 		vks::initializers::descriptorImageInfo(ssaoPass->colorSampler, ssaoPass->frameBuffers.ssaoBlur.color.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
 		vks::initializers::descriptorImageInfo(ssaoPass->colorSampler, deferredShading->deferredShadingRtFrameBuffer.deferredShadingRtAttachment.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
 		vks::initializers::descriptorImageInfo(prezPass->colorSampler, prezPass->prezRtFrameBuffer.prezRtAttachment.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
@@ -335,10 +252,11 @@
 		ssrPass->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors);
 		bloomFFT->prepareCompute(descriptorSets->descriptorPool, imageDescriptors[4]);
 	
-		ssaoPass->buildDeferredCommandBuffer(pipeline);
+		ssaoPass->buildCommandBuffer(pipeline);
 
-		prezPass->buildCommandBuffer(ssaoPass->cmdBuffer, sceneGraph->models.nodes["samplescene.dae"].vertices.buffer, sceneGraph->models.nodes["samplescene.dae"].indices.buffer, sceneGraph->models.nodes["samplescene.dae"].indexCount);
+		prezPass->buildCommandBuffer(ssaoPass->cmdBuffer, sceneGraph->models.nodes[MODEL].vertices.buffer, sceneGraph->models.nodes[MODEL].indices.buffer, sceneGraph->models.nodes[MODEL].indexCount);
 		deferredShading->buildCommandBuffer(ssaoPass->cmdBuffer);
+		skyboxPass->createPipeline(vdo->vertices.inputState, deferredShading->renderPass);
 		skyboxPass->buildCommandBuffer(ssaoPass->cmdBuffer);
 		vkCmdEndRenderPass(ssaoPass->cmdBuffer);
 		bloomFFT->buildComputeCommandBuffer();
@@ -407,19 +325,29 @@
 		descriptorSets->updateDescriptorSet(irradianceCube->textures.irradianceCube,irradianceCube->textures.prefilteredCube, irradianceCube->textures.lutBrdf);
 		
 	
-		deferredPass->createUniformBuffers(queue, camera.matrices.perspective, camera.matrices.view, descriptorSets->uboShadowMapMvpVS.depthMVP);
-		deferredPass->createDescriptorsLayouts(descriptorSets->descriptorPool);
-		deferredPass->wirteDescriptorSets(descriptorSets->descriptorPool, descriptorSets->shadowMapTexDescriptor);
-		deferredPass->createPipeline(vdo->vertices.inputState);
+		gbufferPass->createUniformBuffers(queue, camera.matrices.perspective, camera.matrices.view, descriptorSets->uboShadowMapMvpVS.depthMVP);
+		gbufferPass->createDescriptorsLayouts(descriptorSets->descriptorPool);
+
+		std::vector<VkDescriptorImageInfo> texDescriptor = {
+			descriptorSets->shadowMapTexDescriptor,
+			descriptorSets->pbrTex.albedoMap.descriptor,
+			descriptorSets->pbrTex.normalMap.descriptor,
+			descriptorSets->pbrTex.roughnessMap.descriptor,
+			descriptorSets->pbrTex.metallicMap.descriptor,
+			descriptorSets->pbrTex.aoMap.descriptor
+
+		};
+		gbufferPass->wirteDescriptorSets(descriptorSets->descriptorPool, texDescriptor);
+		gbufferPass->createPipeline(vdo->vertices.inputState);
 		
-		deferredPass->buildCommandBuffer(cmdPool, sceneGraph->models.nodes["samplescene.dae"].vertices.buffer, sceneGraph->models.nodes["samplescene.dae"].indices.buffer, sceneGraph->models.nodes["samplescene.dae"].indexCount);
+		
 
 		skyboxPass  = std::make_shared<SkyboxPass>(vulkanDevice);
 		skyboxPass->createModel(queue, vdo->vertexLayout);
 		skyboxPass->createDescriptorsLayouts();
 		skyboxPass->createUniformBuffers(queue, camera.matrices.perspective, glm::mat4(glm::mat3(camera.matrices.view)));
 		skyboxPass->wirteDescriptorSets(descriptorSets->descriptorPool, descriptorSets->cubeMap.descriptor);
-		skyboxPass->createPipeline(vdo->vertices.inputState, outputPass->renderPass);
+		
 
 
 		prezPass = std::make_shared<PrezPass>(vulkanDevice);

@@ -27,50 +27,37 @@ public:
 	struct {
 		vks::Texture2D ssaoNoise;
 	} textures;
-
-	struct UBOSceneMatrices {
-		glm::mat4 projection;
-		glm::mat4 model;
-		glm::mat4 view;
-	} uboSceneMatrices;
 	struct UBOSSAOParams {
 		glm::mat4 projection;
-		glm::vec4 cameraPos;
-		glm::vec4 lightPos;
 	} uboSSAOParams;
 
 	struct {
-		VkPipeline offscreen;
-		VkPipeline composition;
+;
 		VkPipeline ssao;
 		VkPipeline ssaoBlur;
 	} pipelines;
 
 	struct {
-		VkPipelineLayout gBuffer;
+		
 		VkPipelineLayout ssao;
 		VkPipelineLayout ssaoBlur;
-		VkPipelineLayout composition;
+		
 	} pipelineLayouts;
 
 	struct {
 		const uint32_t count = 5;
-		VkDescriptorSet model;
-		VkDescriptorSet floor;
 		VkDescriptorSet ssao;
 		VkDescriptorSet ssaoBlur;
-		VkDescriptorSet composition;
+	
 	} descriptorSets;
 
 	struct {
-		VkDescriptorSetLayout gBuffer;
 		VkDescriptorSetLayout ssao;
 		VkDescriptorSetLayout ssaoBlur;
-		VkDescriptorSetLayout composition;
 	} descriptorSetLayouts;
 
 	struct {
-		vks::Buffer sceneMatrices;
+
 		vks::Buffer ssaoKernel;
 		vks::Buffer ssaoParams;
 	} uniformBuffers;
@@ -132,13 +119,12 @@ public:
 	void prepareFramebuffers(uint32_t  width, uint32_t   height);
 	void setupLayoutsAndDescriptors(VkImageView positionView, VkImageView normalView, VkImageView colorView);
 	void setupDescriptorPool();
-	void buildDeferredCommandBuffer(std::shared_ptr<Pipeline> pipeline);
+	void buildCommandBuffer(std::shared_ptr<Pipeline> pipeline);
 	VkCommandBuffer createCommandBuffer(VkCommandBufferLevel level, bool begin, VkCommandPool &cmdPool);
-	void prepareUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm::mat4 &view, glm::vec4& cameraPos, glm::vec4& lightpos);
-	void updateUniformBufferSSAOParams(glm::mat4 &perspective, glm::vec4 &cameraPos,glm::vec4 &lightPos);
-	void updateUniformBufferMatrices(glm::mat4 &perspective, glm::mat4 &view);
+	void prepareUniformBuffers(VkQueue queue, glm::mat4 &perspective);
+	void updateUniformBufferSSAOParams(glm::mat4 &perspectiv);
+
 	void preparePipelines(std::shared_ptr<VertexDescriptions> vdo);
-	void compositionSet(vks::TextureCubeMap &IrradianceMap, vks::TextureCubeMap &prefilteredCube, vks::Texture2D &lutMap,
-		VkImageView positionView, VkImageView normalView, VkImageView colorView);
+
 #pragma endregion
 };

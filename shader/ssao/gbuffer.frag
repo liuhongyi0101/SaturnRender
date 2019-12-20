@@ -15,6 +15,12 @@ layout (location = 3) out vec4 outmix;
 const float NEAR_PLANE = 0.1f; //todo: specialization const
 const float FAR_PLANE = 256.0f; //todo: specialization const 
 layout (binding = 1) uniform sampler2D shadowMap;
+layout (binding = 2) uniform sampler2D albedoMap;
+layout (binding = 3) uniform sampler2D normalMap;
+layout (binding = 4) uniform sampler2D roughnessMap;
+layout (binding = 5) uniform sampler2D metallicMap;
+layout (binding = 6) uniform sampler2D aoMap;
+
 float linearDepth(float depth)
 {
 	float z = depth * 2.0f - 1.0f; 
@@ -57,11 +63,38 @@ float filterPCF(vec4 sc)
 	}
 	return shadowFactor / count;
 }
+vec3 perturbNormal()
+{
+	vec3 tangentNormal = texture(normalMap, inUV).xyz * 2.0 - 1.0;
+
+	vec3 q1 = dFdx(inPos);
+	vec3 q2 = dFdy(inPos);
+	vec2 st1 = dFdx(inUV);
+	vec2 st2 = dFdy(inUV);
+
+	vec3 N = normalize(inNormal);
+	vec3 T = normalize(q1 * st2.t - q2 * st1.t);
+	vec3 B = -normalize(cross(N, T));
+	mat3 TBN = mat3(T, B, N);
+
+	return normalize(TBN * tangentNormal);
+}
 void main() 
 {
+
+
+    vec3 N = perturbNormal();
+	vec3 albedo = pow(texture(albedoMap, inUV).rgb, vec3(2.2));
+	float metallic = texture(metallicMap, inUV).r;
+	float roughness = texture(roughnessMap, inUV).r;
+	float ao = texture(aoMap, inUV).r;
+
+
+
+
 	float inshadow = filterPCF(inShadowCoord / inShadowCoord.w);
 	outPosition = vec4(inPos, linearDepth(gl_FragCoord.z));
-	outNormal = vec4(normalize(inNormal) * 0.5 + 0.5, 1.0);
-	outAlbedo = vec4(1.0f, 0.765557f, 0.336057f, inshadow) ;
-	outmix =vec4(1.0,0.1,0.0, 1.0);
+	outNormal = vec4(N * 0.5 + 0.5, 1.0);
+	outAlbedo = vec4(albedo, inshadow) ;
+	outmix =vec4(metallic,roughness,ao, 1.0);
 }

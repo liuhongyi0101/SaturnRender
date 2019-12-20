@@ -288,62 +288,7 @@ void SsaoPass::setupLayoutsAndDescriptors(VkImageView positionView, VkImageView 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
 
 }
-void SsaoPass::compositionSet(vks::TextureCubeMap &IrradianceMap, 
-	vks::TextureCubeMap &prefilteredCube, vks::Texture2D &lutMap, 
-	VkImageView positionView, VkImageView normalView, VkImageView colorView)
-{
-
-	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
-	VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo;
-	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo();
-	VkDescriptorSetAllocateInfo descriptorAllocInfo = vks::initializers::descriptorSetAllocateInfo(descriptorPool, nullptr, 1);
-	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-	std::vector<VkDescriptorImageInfo> imageDescriptors;
-	// Composition
-	setLayoutBindings = {
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0),						// FS Position+Depth
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1),						// FS Normals
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2),						// FS Albedo
-						// FS SSAO
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3),						// FS SSAO blurred
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 4),						// FS Albedo
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 5),						// FS SSAO
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 6),
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 7),
-		// FS Lights UBO 
-	};
-	setLayoutCreateInfo = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
-	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &setLayoutCreateInfo, nullptr, &descriptorSetLayouts.composition));
-	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayouts.composition;
-	VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayouts.composition));
-	descriptorAllocInfo.pSetLayouts = &descriptorSetLayouts.composition;
-	VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &descriptorAllocInfo, &descriptorSets.composition));
-	imageDescriptors = {
-		vks::initializers::descriptorImageInfo(colorSampler, positionView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		vks::initializers::descriptorImageInfo(colorSampler, normalView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		vks::initializers::descriptorImageInfo(colorSampler, colorView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		vks::initializers::descriptorImageInfo(colorSampler, frameBuffers.ssao.color.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-		vks::initializers::descriptorImageInfo(colorSampler, frameBuffers.ssaoBlur.color.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-	};
-	writeDescriptorSets = {
-		vks::initializers::writeDescriptorSet(descriptorSets.composition, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &imageDescriptors[0]),			// FS Sampler Position+Depth
-		vks::initializers::writeDescriptorSet(descriptorSets.composition, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &imageDescriptors[1]),			// FS Sampler Normals
-		vks::initializers::writeDescriptorSet(descriptorSets.composition, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &imageDescriptors[2]),			// FS Sampler Albedo
-
-		vks::initializers::writeDescriptorSet(descriptorSets.composition, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &imageDescriptors[4]),			// FS Sampler SSAO blurred
-			// FS SSAO Params UBO
-
-		vks::initializers::writeDescriptorSet(descriptorSets.composition, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &IrradianceMap.descriptor),
-
-		vks::initializers::writeDescriptorSet(descriptorSets.composition, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5, &prefilteredCube.descriptor),
-		vks::initializers::writeDescriptorSet(descriptorSets.composition, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6, &lutMap.descriptor),
-		vks::initializers::writeDescriptorSet(descriptorSets.composition, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 7, &uniformBuffers.ssaoParams.descriptor),
-	};
-	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
-
-
-}
-void SsaoPass::buildDeferredCommandBuffer(std::shared_ptr<Pipeline> pipeline)
+void SsaoPass::buildCommandBuffer(std::shared_ptr<Pipeline> pipeline)
 {
 	VkDeviceSize offsets[1] = { 0 };
 	cmdBuffer = createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, false, cmdPool);
@@ -437,14 +382,8 @@ VkCommandBuffer SsaoPass::createCommandBuffer(VkCommandBufferLevel level, bool b
 	return cmdBuffer;
 }
 // Prepare and initialize uniform buffer containing shader uniforms
-void SsaoPass::prepareUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm::mat4 &view,glm::vec4& cameraPos, glm::vec4& lightpos)
+void SsaoPass::prepareUniformBuffers(VkQueue queue, glm::mat4 &perspective)
 {
-	// Scene matrices
-	vulkanDevice->createBuffer(
-		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		&uniformBuffers.sceneMatrices,
-		sizeof(uboSceneMatrices));
 
 	// SSAO parameters 
 	vulkanDevice->createBuffer(
@@ -453,8 +392,8 @@ void SsaoPass::prepareUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm:
 		&uniformBuffers.ssaoParams,
 		sizeof(uboSSAOParams));
 
-	updateUniformBufferMatrices(perspective, view);
-	updateUniformBufferSSAOParams(perspective, cameraPos,lightpos);
+
+	updateUniformBufferSSAOParams(perspective);
 
 	// SSAO
 	std::default_random_engine rndEngine(0);
@@ -489,21 +428,10 @@ void SsaoPass::prepareUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm:
 	// Upload as texture
 	textures.ssaoNoise.fromBuffer(ssaoNoise.data(), ssaoNoise.size() * sizeof(glm::vec4), VK_FORMAT_R32G32B32A32_SFLOAT, SSAO_NOISE_DIM, SSAO_NOISE_DIM, vulkanDevice, queue, VK_FILTER_NEAREST);
 }
-void SsaoPass::updateUniformBufferMatrices(glm::mat4 &perspective, glm::mat4 &view)
-{
-	uboSceneMatrices.projection = perspective;
-	uboSceneMatrices.view = view;
-	uboSceneMatrices.model = glm::mat4(1.0f);
 
-	VK_CHECK_RESULT(uniformBuffers.sceneMatrices.map());
-	uniformBuffers.sceneMatrices.copyTo(&uboSceneMatrices, sizeof(uboSceneMatrices));
-	uniformBuffers.sceneMatrices.unmap();
-}
-void SsaoPass::updateUniformBufferSSAOParams(glm::mat4 &perspective,glm::vec4 &cameraPos, glm::vec4 &lightPos)
+void SsaoPass::updateUniformBufferSSAOParams(glm::mat4 &perspective)
 {
 	uboSSAOParams.projection = perspective;
-	uboSSAOParams.cameraPos = cameraPos;
-	uboSSAOParams.lightPos = lightPos;
 	VK_CHECK_RESULT(uniformBuffers.ssaoParams.map());
 	uniformBuffers.ssaoParams.copyTo(&uboSSAOParams, sizeof(uboSSAOParams));
 	uniformBuffers.ssaoParams.unmap();
@@ -522,8 +450,6 @@ void SsaoPass::preparePipelines(std::shared_ptr<VertexDescriptions> vdo)
 	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
 	
-
-
 	// Empty vertex input state for fullscreen passes
 	VkPipelineVertexInputStateCreateInfo emptyVertexInputState = vks::initializers::pipelineVertexInputStateCreateInfo();
 
@@ -539,10 +465,7 @@ void SsaoPass::preparePipelines(std::shared_ptr<VertexDescriptions> vdo)
 	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 	pipelineCreateInfo.pStages = shaderStages.data();
 
-	
 	shaderStages[0] = loadShader(getAssetPath + "ssao/fullscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT,device, shaderModules);
-//	shaderStages[1] = loadShader(getAssetPath + "ssao/composition.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT,device, shaderModules);
-//	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipelines.composition));
 
 	// SSAO Pass
 	{

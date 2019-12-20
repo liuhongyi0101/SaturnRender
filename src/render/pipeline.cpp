@@ -15,43 +15,11 @@ void Pipeline::createPipelineCache(VkDevice device)
 	pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 	VK_CHECK_RESULT(vkCreatePipelineCache(device, &pipelineCacheCreateInfo, nullptr, &pipelineCache));
 }
-void Pipeline::setupPipeline(VkDevice device, std::shared_ptr<VertexDescriptions> vdo_)
-{
-	
-	pipelineCreateInfo =
-		vks::initializers::pipelineCreateInfo(pipelineLayout, renderPass);
-
-	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
-	pipelineCreateInfo.pRasterizationState = &rasterizationState;
-	pipelineCreateInfo.pColorBlendState = &colorBlendState;
-	pipelineCreateInfo.pMultisampleState = &multisampleState;
-	pipelineCreateInfo.pViewportState = &viewportState;
-	pipelineCreateInfo.pDepthStencilState = &depthStencilState;
-	pipelineCreateInfo.pDynamicState = &dynamicState;
-	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-	pipelineCreateInfo.pStages = shaderStages.data();
-	pipelineCreateInfo.pVertexInputState = &vdo_->vertices.inputState;
-
-	//createPipeline(device, std::string("pbrbasic/skybox.vert.spv"), std::string("pbrbasic/skybox.frag.spv"), depthstate, pipelines["skyPipeline"]);
-	//// Flip cull mode
-	//rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
-	//// Enable depth test and write
-	// depthstate = { 1, 1 };
-	//createPipeline(device, std::string("pbrbasic/pbr.vert.spv"), std::string("pbrbasic/pbr.frag.spv"),  depthstate, pipelines["opaquePipeline"]);
-	//createPipeline(device, std::string("pbrbasic/pbr.vert.spv"), std::string("pbrbasic/pbrNoTex.frag.spv"), depthstate, pipelines["NoTexPipeline"]);
-	
-
-	
-	//pipelineCreateInfo.pVertexInputState = &emptyInputState;
-	//
-	//pipelineCreateInfo.pVertexInputState = &vdo_->vertices.inputState;
-
-}
 void Pipeline::createShadowPipeline(VkDevice device,VkRenderPass renderPass, VkPipelineLayout pipelineLayout, std::shared_ptr<VertexDescriptions> vdo)
 {
 	pipelineCreateInfo =
 		vks::initializers::pipelineCreateInfo(pipelineLayout, renderPass);
-
+	depthStencilState = vks::initializers::pipelineDepthStencilStateCreateInfo(1, 1, VK_COMPARE_OP_LESS_OR_EQUAL);
 	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
 	pipelineCreateInfo.pRasterizationState = &rasterizationState;
 	pipelineCreateInfo.pColorBlendState = &colorBlendState;
@@ -62,8 +30,6 @@ void Pipeline::createShadowPipeline(VkDevice device,VkRenderPass renderPass, VkP
 	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 	pipelineCreateInfo.pStages = shaderStages.data();
 	pipelineCreateInfo.pVertexInputState = &vdo->vertices.inputState;
-
-
 
 	// No blend attachment states(no color attachments used)
 	rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
@@ -84,36 +50,6 @@ void Pipeline::createShadowPipeline(VkDevice device,VkRenderPass renderPass, VkP
 	pipelineCreateInfo.renderPass = renderPass;
 	createPipeline(device, std::string("shadowmapping/depth.vert.spv"), std::string("shadowmapping/depth.frag.spv"), depthstate, pipelines["genShadowPipeline"]);
 	
-}
-
-
-void Pipeline::createSsaoPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout)
-{
-	    // genSSAO Pass
-		// Set constant parameters via specialization constants
-	    pipelineCreateInfo.pVertexInputState = &emptyInputState;
-		std::array<VkSpecializationMapEntry, 2> specializationMapEntries;
-		specializationMapEntries[0] = vks::initializers::specializationMapEntry(0, 0, sizeof(uint32_t));				// SSAO Kernel size
-		specializationMapEntries[1] = vks::initializers::specializationMapEntry(1, sizeof(uint32_t), sizeof(float));	// SSAO radius
-		struct {
-			uint32_t kernelSize = 32;
-			float radius = 0.5;
-		} specializationData;
-		VkSpecializationInfo specializationInfo = vks::initializers::specializationInfo(2, specializationMapEntries.data(), sizeof(specializationData), &specializationData);
-		shaderStages[1].pSpecializationInfo = &specializationInfo;
-		pipelineCreateInfo.renderPass = renderPass;
-		pipelineCreateInfo.layout = pipelineLayout;
-		
-		createPipeline(device, std::string("ssao/fullscreen.vert.spv"), std::string("ssao/ssao.frag.spv"), depthstate, pipelines["genSsaoPipeline"]);
-		
-}
-void Pipeline::createSsaoBlurPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout)
-{
-	// SSAO blur pass
-	    pipelineCreateInfo.pVertexInputState = &emptyInputState;
-		pipelineCreateInfo.renderPass = renderPass;
-		pipelineCreateInfo.layout = pipelineLayout;
-		createPipeline(device, std::string("ssao/fullscreen.vert.spv"), std::string("ssao/blur.frag.spv"), depthstate, pipelines["ssaoBlurPipeline"]);
 }
 void Pipeline::createQuadPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout,std::string pipelinename)
 {
@@ -154,8 +90,6 @@ void Pipeline::createPipeline(VkDevice device,std::string &vertshader,std::strin
 	shaderStages[0] = loadShader(getAssetPath + vertshader, VK_SHADER_STAGE_VERTEX_BIT, device, shaderModules);
 	shaderStages[1] = loadShader(getAssetPath + fragshader, VK_SHADER_STAGE_FRAGMENT_BIT, device, shaderModules);
 
-	depthStencilState.depthWriteEnable = depthstate.at(0);
-	depthStencilState.depthTestEnable = depthstate.at(1);
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipeline));
 }
 

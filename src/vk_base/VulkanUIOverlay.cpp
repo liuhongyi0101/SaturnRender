@@ -328,7 +328,7 @@ namespace vks
 	/** Prepare a separate render pass for rendering the UI as an overlay */
 	void UIOverlay::prepareRenderPass()
 	{
-		VkAttachmentDescription attachments[2] = {};
+		VkAttachmentDescription attachments[1] = {};
 
 		// Color attachment
 		attachments[0].format = createInfo.colorformat;
@@ -341,23 +341,23 @@ namespace vks
 		attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 		// Depth attachment
-		attachments[1].format = createInfo.depthformat;
-		attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
-		attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		//attachments[1].format = createInfo.depthformat;
+		//attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
+		//attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		//attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		//attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		//attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		//attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		//attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 		VkAttachmentReference colorReference = {};
 		colorReference.attachment = 0;
 		colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-		VkAttachmentReference depthReference = {};
+	/*	VkAttachmentReference depthReference = {};
 		depthReference.attachment = 1;
 		depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
+*/
 		VkSubpassDependency subpassDependencies[2] = {};
 
 		// Transition from final to initial (VK_SUBPASS_EXTERNAL refers to all commmands executed outside of the actual renderpass)
@@ -386,14 +386,14 @@ namespace vks
 		subpassDescription.colorAttachmentCount = 1;
 		subpassDescription.pColorAttachments = &colorReference;
 		subpassDescription.pResolveAttachments = NULL;
-		subpassDescription.pDepthStencilAttachment = &depthReference;
+		
 		subpassDescription.preserveAttachmentCount = 0;
 		subpassDescription.pPreserveAttachments = NULL;
 
 		VkRenderPassCreateInfo renderPassInfo = {};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 		renderPassInfo.pNext = NULL;
-		renderPassInfo.attachmentCount = 2;
+		renderPassInfo.attachmentCount = 1;
 		renderPassInfo.pAttachments = attachments;
 		renderPassInfo.subpassCount = 1;
 		renderPassInfo.pSubpasses = &subpassDescription;
