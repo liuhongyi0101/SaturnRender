@@ -31,8 +31,9 @@ const mat4 biasMat = mat4(
 void main() 
 {
 	gl_Position = ubo.projection * ubo.view * ubo.model * vec4(inPos,1.0);
-	
 	outUV = inUV;
+	outUV.t = 1.0 - inUV.t;
+	
 
 	// Vertex position in view space
 	outPos = vec3(ubo.view * ubo.model * vec4(inPos,1.0));

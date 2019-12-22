@@ -117,8 +117,8 @@ void main()
 	
 	vec4 mixt = texture(samplerMix, inUV);
 
-	float metallic = mixt.g;
-	float roughness =mixt.r;
+	float metallic = mixt.r;
+	float roughness =mixt.g;
 	float ao = mixt.b;
 
 	vec3 F0 = vec3(0.04); 
@@ -148,7 +148,7 @@ void main()
 
 	vec3 ambient = (kD * diffuse )+ specular;
 	
-	vec3 color = (ambient * ao + Lo)  *pow(ssao,4) * albedo.w;
+	vec3 color = (ambient * ao + Lo);
 
 	// Tone mapping
 	color = Uncharted2Tonemap(color * 3.0);
