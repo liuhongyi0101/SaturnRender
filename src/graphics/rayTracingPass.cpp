@@ -164,7 +164,7 @@ void RayTracingPass::createPipeline()
 	colorBlendState.pAttachments = blendAttachmentStates.data();
 
 	shaderStages[0] = loadShader(getAssetPath + std::string("ssr/ssr.vert.spv"), VK_SHADER_STAGE_VERTEX_BIT, device, shaderModules);
-	shaderStages[1] = loadShader(getAssetPath + std::string("ssr/ssr.frag.spv"), VK_SHADER_STAGE_FRAGMENT_BIT, device, shaderModules);
+	shaderStages[1] = loadShader(getAssetPath + std::string("rayTracing/ray.frag.spv"), VK_SHADER_STAGE_FRAGMENT_BIT, device, shaderModules);
 
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipeline));
 
