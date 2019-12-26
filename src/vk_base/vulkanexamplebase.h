@@ -253,7 +253,6 @@ public:
 	// Note : Waits for the queue to become idle
 	void flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, bool free);
 
-
 	// Prepare commonly used Vulkan functions
 	virtual void prepare();
 

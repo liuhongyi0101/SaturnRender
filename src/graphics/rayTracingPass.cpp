@@ -1,5 +1,5 @@
 #include "graphics/rayTracingPass.h"
-
+#include "utils/loadshader.h"
 RayTracingPass::RayTracingPass(vks::VulkanDevice * vulkanDevice)
 {
 	this->vulkanDevice = vulkanDevice;
@@ -15,10 +15,11 @@ void RayTracingPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  h
 	const uint32_t ssaoWidth = width;
 	const uint32_t ssaoHeight = height;
 
-	ssrRtFrameBuffer.setSize(width, height);
+	pingpong[ping].setSize(width, height);
+	pingpong[ping-1].setSize(width, height);
 
-	createAttachment(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &ssrRtFrameBuffer.ssrRtAttachment, width, height);
-
+	createAttachment(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &pingpong[ping].rtAttachment, width, height);
+	createAttachment(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &pingpong[ping-1].rtAttachment, width, height);
 	// Render passes
 
 	{
@@ -35,7 +36,7 @@ void RayTracingPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  h
 
 
 		// Formats
-		attachmentDescs.format = ssrRtFrameBuffer.ssrRtAttachment.format;
+		attachmentDescs.format = pingpong[ping].rtAttachment.format;
 
 
 		std::vector<VkAttachmentReference> colorReferences;
@@ -77,17 +78,20 @@ void RayTracingPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  h
 		VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
 
 		VkImageView attachments;
-		attachments = ssrRtFrameBuffer.ssrRtAttachment.view;
+		attachments = pingpong[ping].rtAttachment.view;
 
 
 		VkFramebufferCreateInfo fbufCreateInfo = vks::initializers::framebufferCreateInfo();
 		fbufCreateInfo.renderPass = renderPass;
 		fbufCreateInfo.pAttachments = &attachments;
 		fbufCreateInfo.attachmentCount = 1;
-		fbufCreateInfo.width = ssrRtFrameBuffer.width;
-		fbufCreateInfo.height = ssrRtFrameBuffer.height;
+		fbufCreateInfo.width = pingpong[ping].width;
+		fbufCreateInfo.height = pingpong[ping].height;
 		fbufCreateInfo.layers = 1;
-		VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbufCreateInfo, nullptr, &ssrRtFrameBuffer.frameBuffer));
+
+		VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbufCreateInfo, nullptr, &pingpong[ping].frameBuffer));
+		fbufCreateInfo.pAttachments = &pingpong[ping-1].rtAttachment.view;
+		VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbufCreateInfo, nullptr, &pingpong[ping-1].frameBuffer));
 	}
 
 	// Shared sampler used for all color attachments
@@ -223,18 +227,18 @@ void RayTracingPass::buildCommandBuffer(VkCommandBuffer &cmdBuffer)
 
 	VkRenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();
 	renderPassBeginInfo.renderPass = renderPass;
-	renderPassBeginInfo.framebuffer = ssrRtFrameBuffer.frameBuffer;
-	renderPassBeginInfo.renderArea.extent.width = ssrRtFrameBuffer.width;
-	renderPassBeginInfo.renderArea.extent.height = ssrRtFrameBuffer.height;
+	renderPassBeginInfo.framebuffer = pingpong[ping].frameBuffer;
+	renderPassBeginInfo.renderArea.extent.width = pingpong[ping].width;
+	renderPassBeginInfo.renderArea.extent.height = pingpong[ping].height;
 	renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassBeginInfo.pClearValues = clearValues.data();
 
 	vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	VkViewport viewport = vks::initializers::viewport((float)ssrRtFrameBuffer.width, (float)ssrRtFrameBuffer.height, 0.0f, 1.0f);
+	VkViewport viewport = vks::initializers::viewport((float)pingpong[ping].width, (float)pingpong[ping].height, 0.0f, 1.0f);
 	vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 
-	VkRect2D scissor = vks::initializers::rect2D(ssrRtFrameBuffer.width, ssrRtFrameBuffer.height, 0, 0);
+	VkRect2D scissor = vks::initializers::rect2D(pingpong[ping].width, pingpong[ping].height, 0, 0);
 	vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
 	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
