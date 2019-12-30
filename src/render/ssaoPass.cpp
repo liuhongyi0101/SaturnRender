@@ -1,13 +1,13 @@
 #include"renderer/ssaoPass.h"
 #include <random>
 #include "utils/loadshader.h"
-SsaoPass::SsaoPass(vks::VulkanDevice * vulkanDevice, VkCommandPool &cmdPool,uint32_t  width, uint32_t   height)
+SsaoPass::SsaoPass(vks::VulkanDevice * vulkanDevice,uint32_t  width, uint32_t   height)
 {
 	this->vulkanDevice = vulkanDevice;
 	this->device = vulkanDevice->logicalDevice;
 	prepareFramebuffers(  width,  height);
 	setupDescriptorPool();
-	this->cmdPool = cmdPool;
+	
 }
 SsaoPass::~SsaoPass()
 {
@@ -288,22 +288,17 @@ void SsaoPass::setupLayoutsAndDescriptors(VkImageView positionView, VkImageView 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
 
 }
-void SsaoPass::buildCommandBuffer(std::shared_ptr<Pipeline> pipeline)
+void SsaoPass::buildCommandBuffer(VkCommandBuffer &cmdBuffer)
 {
 	VkDeviceSize offsets[1] = { 0 };
-	cmdBuffer = createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, false, cmdPool);
 	
 	// Create a semaphore used to synchronize offscreen rendering and usage
 	VkSemaphoreCreateInfo semaphoreCreateInfo = vks::initializers::semaphoreCreateInfo();
 	VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphore));
 
-	VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
-
 	std::vector<VkClearValue> clearValues(2);
                                                                                                    
 	VkRenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();
-
-	VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
 
 	VkViewport viewport = vks::initializers::viewport((float)frameBuffers.ssao.width, (float)frameBuffers.ssao.height, 0.0f, 1.0f);
 
@@ -358,29 +353,8 @@ void SsaoPass::buildCommandBuffer(std::shared_ptr<Pipeline> pipeline)
 
 	vkCmdEndRenderPass(cmdBuffer);
 
-	//VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
 }
-VkCommandBuffer SsaoPass::createCommandBuffer(VkCommandBufferLevel level, bool begin, VkCommandPool &cmdPool)
-{
-	VkCommandBuffer cmdBuffer;
 
-	VkCommandBufferAllocateInfo cmdBufAllocateInfo =
-		vks::initializers::commandBufferAllocateInfo(
-			cmdPool,
-			level,
-			1);
-
-	VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &cmdBufAllocateInfo, &cmdBuffer));
-
-	// If requested, also start the new command buffer
-	if (begin)
-	{
-		VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
-		VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
-	}
-
-	return cmdBuffer;
-}
 // Prepare and initialize uniform buffer containing shader uniforms
 void SsaoPass::prepareUniformBuffers(VkQueue queue, glm::mat4 &perspective)
 {
@@ -465,7 +439,7 @@ void SsaoPass::preparePipelines(std::shared_ptr<VertexDescriptions> vdo)
 	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 	pipelineCreateInfo.pStages = shaderStages.data();
 
-	shaderStages[0] = loadShader(getAssetPath + "ssao/fullscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT,device, shaderModules);
+	shaderStages[0] = loadShader(getAssetPath + "common/fullscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT,device, shaderModules);
 
 	// SSAO Pass
 	{
@@ -490,6 +464,6 @@ void SsaoPass::preparePipelines(std::shared_ptr<VertexDescriptions> vdo)
 		shaderStages[1] = loadShader(getAssetPath + "ssao/blur.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT,device, shaderModules);
 		pipelineCreateInfo.renderPass = frameBuffers.ssaoBlur.renderPass;
 		pipelineCreateInfo.layout = pipelineLayouts.ssaoBlur;
-		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipelines.ssaoBlur));
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipelines.ssaoBlur)); 
 	}
 }

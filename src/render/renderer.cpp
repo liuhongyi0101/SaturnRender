@@ -96,6 +96,7 @@
 	}
 	void Renderer::prepare()
 	{
+
 		gbufferPass = std::make_shared<GbufferPass>(vulkanDevice);
 		gbufferPass->createFramebuffersAndRenderPass(width, height);
 		VulkanExampleBase::prepare();
@@ -131,7 +132,7 @@
 		submitInfo.pWaitSemaphores = &gbufferPass->semaphore;
 		submitInfo.pSignalSemaphores = &ssaoPass->semaphore;
 		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &ssaoPass->cmdBuffer;
+		submitInfo.pCommandBuffers = &graphicCommand->cmdBuffer;
 		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
 
 		// Scene rendering
@@ -210,7 +211,7 @@
 	}
 	void Renderer::PostProcessing()
 	{
-		ssaoPass = std::make_shared<SsaoPass>(vulkanDevice,cmdPool,width,height);
+		ssaoPass = std::make_shared<SsaoPass>(vulkanDevice,width,height);
 		ssaoPass->prepareUniformBuffers(queue, camera.matrices.perspective);
 		ssaoPass->setupLayoutsAndDescriptors(gbufferPass->deferredFrameBuffers.position.view, gbufferPass->deferredFrameBuffers.normal.view, gbufferPass->deferredFrameBuffers.albedo.view);
 		
@@ -251,14 +252,14 @@
 		deferredShading->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors, IblImageDescriptors);
 		ssrPass->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors);
 		bloomFFT->prepareCompute(descriptorSets->descriptorPool, imageDescriptors[4]);
-	
-		ssaoPass->buildCommandBuffer(pipeline);
+		
+		ssaoPass->buildCommandBuffer(graphicCommand->cmdBuffer);
 
-		prezPass->buildCommandBuffer(ssaoPass->cmdBuffer, sceneGraph->models.nodes[MODEL].vertices.buffer, sceneGraph->models.nodes[MODEL].indices.buffer, sceneGraph->models.nodes[MODEL].indexCount);
-		deferredShading->buildCommandBuffer(ssaoPass->cmdBuffer);
+		prezPass->buildCommandBuffer(graphicCommand->cmdBuffer, sceneGraph->models.nodes[MODEL].vertices.buffer, sceneGraph->models.nodes[MODEL].indices.buffer, sceneGraph->models.nodes[MODEL].indexCount);
+		deferredShading->buildCommandBuffer(graphicCommand->cmdBuffer);
 		skyboxPass->createPipeline(vdo->vertices.inputState, deferredShading->renderPass);
-		skyboxPass->buildCommandBuffer(ssaoPass->cmdBuffer);
-		vkCmdEndRenderPass(ssaoPass->cmdBuffer);
+		skyboxPass->buildCommandBuffer(graphicCommand->cmdBuffer);
+		vkCmdEndRenderPass(graphicCommand->cmdBuffer);
 		bloomFFT->buildComputeCommandBuffer();
 		imageDescriptors = {
 			vks::initializers::descriptorImageInfo(deferredShading->colorSampler, deferredShading->deferredShadingRtFrameBuffer.deferredShadingRtAttachment.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
@@ -267,9 +268,10 @@
 		
 		// ssr
 	//	ssrPass->buildCommandBuffer(ssaoPass->cmdBuffer);
-		VK_CHECK_RESULT(vkEndCommandBuffer(ssaoPass->cmdBuffer));
+		rayTracingPass->buildCommandBuffer(graphicCommand->cmdBuffer);
+		graphicCommand->stopRecordCmd();
 
-		outputPass->buildCommandBuffer(ssaoPass->cmdBuffer, width, height);
+		outputPass->buildCommandBuffer(graphicCommand->cmdBuffer, width, height);
 	}
 	void Renderer::loadModule() {
 		
@@ -363,5 +365,14 @@
 		bloomFFT->prepareTextureTarget(width,height,cmdPool,queue);
 		
 
+		graphicCommand = std::make_shared<GraphicCommand>(vulkanDevice);
+		rayTracingPass = std::make_shared<RayTracingPass>(vulkanDevice);
+
+		rayTracingPass->createNoiseTex(queue);
+		rayTracingPass->createFramebuffersAndRenderPass(width,height);
+		rayTracingPass->createDescriptorsLayouts();
+		rayTracingPass->createPipeline();
+		rayTracingPass->createUniformBuffers(queue, camera.matrices.perspective *camera.matrices.view, camera.position);
+		rayTracingPass->wirteDescriptorSets(descriptorSets->descriptorPool);
 	}
 

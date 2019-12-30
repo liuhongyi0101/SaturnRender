@@ -185,8 +185,8 @@ void DeferredShading::createPipeline()
 	colorBlendState.attachmentCount = static_cast<uint32_t>(blendAttachmentStates.size());
 	colorBlendState.pAttachments = blendAttachmentStates.data();
 
-	shaderStages[0] = loadShader(getAssetPath + "ssao/fullscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT, device, shaderModules);
-	shaderStages[1] = loadShader(getAssetPath + "ssao/composition.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, device, shaderModules);
+	shaderStages[0] = loadShader(getAssetPath + "common/fullscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT, device, shaderModules);
+	shaderStages[1] = loadShader(getAssetPath + "deferredShading/deferredShading.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, device, shaderModules);
 
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipeline));
 

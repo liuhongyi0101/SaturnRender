@@ -26,7 +26,6 @@ public:
 	VkClearColorValue defaultClearColor = { { 0.025f, 0.025f, 0.025f, 1.0f } };
 
 	void buildShadowMapCommandBuffer(renderpassUnit &renderPass);
-	void ssaobuildCommandBuffers(renderpassUnit renderPass, std::vector<VkCommandBuffer>& drawCmdBuffers, std::vector<VkFramebuffer> &frameBuffers);
 	VkDevice device;
 	
 private:

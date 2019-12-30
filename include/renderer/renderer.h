@@ -19,6 +19,8 @@
 #include "graphics/prezPass.h"
 #include "graphics/bloomFFT.h"
 #include "graphics/ouputPass.h"
+#include "renderer/graphicCommand.h"
+#include "graphics/rayTracingPass.h"
 #define FB_COLOR_FORMAT VK_FORMAT_R8G8B8A8_UNORM
 #define GRID_DIM 2
 #define OBJ_DIM 0.1f
@@ -55,10 +57,11 @@
 		std::shared_ptr<PrezPass> prezPass;
 		std::shared_ptr<BloomFFT> bloomFFT;
 		std::shared_ptr<OutputPass> outputPass;
+		std::shared_ptr<GraphicCommand> graphicCommand;
+		std::shared_ptr<RayTracingPass> rayTracingPass;
 	protected:
 		
-		vks::Buffer uniformBuffer;
-	
+
 		glm::vec3 lightPos = glm::vec3();
 		float lightFOV = 60.0f;
 	// Keep depth range as small as possible

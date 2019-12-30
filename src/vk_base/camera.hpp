@@ -20,6 +20,7 @@ private:
 
 	void updateViewMatrix()
 	{
+	
 		glm::mat4 rotM = glm::mat4(1.0f);
 		glm::mat4 transM;
 

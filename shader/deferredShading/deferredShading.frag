@@ -1,40 +1,28 @@
 #version 450
 
-layout (location = 0) in vec3 inWorldPos;
-layout (location = 1) in vec3 inNormal;
-layout (location = 2) in vec2 inUV;
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
 
-layout (binding = 0) uniform UBO {
-	mat4 projection;
-	mat4 model;
-	mat4 view;
-	vec3 camPos;
-} ubo;
+layout (binding = 0) uniform sampler2D samplerposition;
+layout (binding = 1) uniform sampler2D samplerNormal;
+layout (binding = 2) uniform sampler2D samplerAlbedo;
+layout (binding = 3) uniform sampler2D samplerMix;
+layout (binding = 4) uniform sampler2D samplerSSAOBlur;
 
-layout (binding = 1) uniform UBOParams {
-	vec4 lights[4];
-	float exposure;
-	float gamma;
+
+layout (binding = 5) uniform samplerCube samplerIrradiance;
+layout (binding = 6) uniform samplerCube prefilteredMap;
+layout (binding = 7) uniform sampler2D samplerBRDFLUT;
+layout (binding = 8) uniform UBO 
+{
+	vec4 lightpos;
 } uboParams;
 
-layout(push_constant) uniform PushConsts {
-	layout(offset = 12) float roughness;
-	layout(offset = 16) float metallic;
-	layout(offset = 20) float specular;
-	layout(offset = 24) float r;
-	layout(offset = 28) float g;
-	layout(offset = 32) float b;
-} material;
-
-layout (binding = 2) uniform samplerCube samplerIrradiance;
-layout (binding = 3) uniform sampler2D samplerBRDFLUT;
-layout (binding = 4) uniform samplerCube prefilteredMap;
+layout (location = 0) in vec2 inUV;
 
 layout (location = 0) out vec4 outColor;
-
 #define PI 3.1415926535897932384626433832795
-#define ALBEDO vec3(material.r, material.g, material.b)
-
+#define ALBEDO texture(samplerAlbedo, inUV).rgb
 // From http://filmicgames.com/archives/75
 vec3 Uncharted2Tonemap(vec3 x)
 {
@@ -114,25 +102,33 @@ vec3 specularContribution(vec3 L, vec3 V, vec3 N, vec3 F0, float metallic, float
 
 	return color;
 }
+void main() 
+{
+	vec3 fragPos = texture(samplerposition, inUV).rgb;
+	vec3 N = normalize(texture(samplerNormal, inUV).rgb * 2.0 - 1.0);
+	vec4 albedo = texture(samplerAlbedo, inUV);
 
-void main()
-{		
-	vec3 N = normalize(inNormal);
-	vec3 V = normalize(ubo.camPos - inWorldPos);
+	vec3 V = normalize( - fragPos);
 	vec3 R = reflect(-V, N); 
+	float ssao =  texture(samplerSSAOBlur, inUV).r;
 
-	float metallic = material.metallic;
-	float roughness = material.roughness;
+	vec3 lightPos = vec3(0.0);
+	vec3 L = normalize(lightPos - fragPos);
+	
+	vec4 mixt = texture(samplerMix, inUV);
+
+	float metallic = mixt.r;
+	float roughness =mixt.g;
+	float ao = mixt.b;
 
 	vec3 F0 = vec3(0.04); 
 	F0 = mix(F0, ALBEDO, metallic);
 
+
+		
 	vec3 Lo = vec3(0.0);
-	for(int i = 0; i < uboParams.lights[i].length(); i++) {
-		vec3 L = normalize(uboParams.lights[i].xyz - inWorldPos);
-		Lo += specularContribution(L, V, N, F0, metallic, roughness);
-	}   
-	
+		 Lo += specularContribution(L, V, N, F0, metallic, roughness);
+		 Lo /=dot(L,L);
 	vec2 brdf = texture(samplerBRDFLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
 	vec3 reflection = prefilteredReflection(R, roughness).rgb;	
 	vec3 irradiance = texture(samplerIrradiance, N).rgb;
@@ -148,15 +144,18 @@ void main()
 	// Ambient part
 	vec3 kD = 1.0 - F;
 	kD *= 1.0 - metallic;	  
-	vec3 ambient = (kD * diffuse + specular);
+	float nol = max(0.0,dot(L, N));
+
+	vec3 ambient = (kD * diffuse )+ specular;
 	
-	vec3 color = ambient + Lo;
+	vec3 color = (ambient * ao + Lo)  *pow(ssao,4) * albedo.w;
 
 	// Tone mapping
-	color = Uncharted2Tonemap(color * uboParams.exposure);
+	color = Uncharted2Tonemap(color * 3.0);
 	color = color * (1.0f / Uncharted2Tonemap(vec3(11.2f)));	
 	// Gamma correction
-	color = pow(color, vec3(1.0f / uboParams.gamma));
+	color = pow(color, vec3(0.45));
 
-	outColor = vec4(color, 1.0);
+	outColor = vec4(color, albedo.r);
+
 }

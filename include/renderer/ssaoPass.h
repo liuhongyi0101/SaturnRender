@@ -14,16 +14,11 @@
 class SsaoPass
 {
 public:
-	SsaoPass(vks::VulkanDevice * vulkanDevice,VkCommandPool &cmdPool, uint32_t  width, uint32_t   height);
+	SsaoPass(vks::VulkanDevice * vulkanDevice, uint32_t  width, uint32_t   height);
 	~SsaoPass();
-
-
 #pragma region Field
 	vks::VulkanDevice * vulkanDevice;
-
-
 	VkDevice device;
-
 	struct {
 		vks::Texture2D ssaoNoise;
 	} textures;
@@ -100,7 +95,6 @@ public:
 	// One sampler for the frame buffer color attachments
 	VkSampler colorSampler;
 
-	VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
 
 	// Semaphore used to synchronize between offscreen and final scene rendering
 	VkSemaphore semaphore = VK_NULL_HANDLE;
@@ -119,8 +113,7 @@ public:
 	void prepareFramebuffers(uint32_t  width, uint32_t   height);
 	void setupLayoutsAndDescriptors(VkImageView positionView, VkImageView normalView, VkImageView colorView);
 	void setupDescriptorPool();
-	void buildCommandBuffer(std::shared_ptr<Pipeline> pipeline);
-	VkCommandBuffer createCommandBuffer(VkCommandBufferLevel level, bool begin, VkCommandPool &cmdPool);
+	void buildCommandBuffer(VkCommandBuffer &cmdBuffer);
 	void prepareUniformBuffers(VkQueue queue, glm::mat4 &perspective);
 	void updateUniformBufferSSAOParams(glm::mat4 &perspectiv);
 

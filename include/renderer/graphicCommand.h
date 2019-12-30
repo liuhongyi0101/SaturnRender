@@ -1,4 +1,4 @@
-#pragma on
+#pragma once
 #include "vulkan/vulkan.h"
 #include "VulkanDevice.hpp"
 #include "VulkanTools.h"
@@ -7,14 +7,18 @@
 class GraphicCommand
 {
 public:
-	GraphicCommand();
+	GraphicCommand(vks::VulkanDevice * vulkanDevice);
 	~GraphicCommand();
 	void createCommandPool();
+
 	void addDrawCmd();
-	VkCommandBuffer createCommandBuffer(VkCommandBufferLevel level, bool begin, VkCommandPool &cmdPool);
+	void createCommandBuffer(VkCommandBufferLevel level);
+	void startRecordCmd();
+	void stopRecordCmd();
+	VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
 private:
 	VkCommandPool cmdPool;
 	vks::VulkanDevice * vulkanDevice;
 	VkDevice device;
-	VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
+	
 };

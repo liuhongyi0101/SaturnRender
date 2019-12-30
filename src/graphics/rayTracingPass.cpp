@@ -9,6 +9,26 @@ RayTracingPass::RayTracingPass(vks::VulkanDevice * vulkanDevice)
 RayTracingPass::~RayTracingPass()
 {
 }
+void RayTracingPass::createNoiseTex(VkQueue queue)
+{
+	const int width = 1280;
+	const int heigt = 720;
+	std::default_random_engine rndEngine(0);
+	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
+	std::vector<glm::vec4> noise(width * heigt);
+	for (uint32_t i = 0; i < static_cast<uint32_t>(noise.size()); i++)
+	{
+		noise[i] = glm::vec4(rndDist(rndEngine) , rndDist(rndEngine) , rndDist(rndEngine) , rndDist(rndEngine) );
+	}
+	randVec2Tex.fromBuffer(noise.data(), noise.size() * sizeof(glm::vec4), VK_FORMAT_B8G8R8A8_UNORM, width, heigt, vulkanDevice, queue, VK_FILTER_NEAREST);
+	std::vector<glm::vec4> noiseVec3(width * heigt);
+	for (uint32_t i = 0; i < static_cast<uint32_t>(noiseVec3.size()); i++)
+	{
+		noiseVec3[i] = glm::vec4(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine) ,0.0);
+	}
+	randVec3Tex.fromBuffer(noiseVec3.data(), noiseVec3.size() * sizeof(glm::vec4), VK_FORMAT_B8G8R8A8_UNORM, width, heigt, vulkanDevice, queue, VK_FILTER_NEAREST);
+}
+
 void RayTracingPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  height)
 {
 
@@ -108,6 +128,9 @@ void RayTracingPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  h
 	sampler.maxLod = 1.0f;
 	sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 	VK_CHECK_RESULT(vkCreateSampler(device, &sampler, nullptr, &colorSampler));
+
+	pingpongDescriptor[ping] = vks::initializers::descriptorImageInfo(colorSampler, pingpong[ping].rtAttachment.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	pingpongDescriptor[ping-1] = vks::initializers::descriptorImageInfo(colorSampler, pingpong[ping-1].rtAttachment.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 void RayTracingPass::createDescriptorsLayouts()
@@ -119,10 +142,10 @@ void RayTracingPass::createDescriptorsLayouts()
 
 	setLayoutBindings = {
 		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0),
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1),// position depth buffer
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2),// normalbuffer
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3),// colorbuffer
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 4),// front z depth
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1),
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2),
+		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3),
+		
 	};
 	setLayoutCreateInfo = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
 	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &setLayoutCreateInfo, nullptr, &descriptorSetLayout));
@@ -169,7 +192,7 @@ void RayTracingPass::createPipeline()
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipeline));
 
 }
-void RayTracingPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool, std::vector<VkDescriptorImageInfo> &texDescriptor)
+void RayTracingPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool)
 {
 	VkDescriptorSetAllocateInfo descriptorAllocInfo = vks::initializers::descriptorSetAllocateInfo(descriptorPool, nullptr, 1);
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
@@ -177,15 +200,13 @@ void RayTracingPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool, std::
 	VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &descriptorAllocInfo, &descriptorSet));
 	writeDescriptorSets = {
 		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.descriptor),
-		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1 , &texDescriptor[0]),
-		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2 , &texDescriptor[1]),
-		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3 , &texDescriptor[4]),
-		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,4 , &texDescriptor[5]),
-
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1 , &pingpongDescriptor[ping - 1]),
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2 , &randVec2Tex.descriptor),
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3 , &randVec3Tex.descriptor),
 	};
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
 }
-void RayTracingPass::createUniformBuffers(VkQueue queue, glm::mat4 &invPerspective)
+void RayTracingPass::createUniformBuffers(VkQueue queue, glm::mat4 &invPerspective, glm::vec3 &cameraPos)
 {
 	// Scene matrices
 	vulkanDevice->createBuffer(
@@ -193,26 +214,26 @@ void RayTracingPass::createUniformBuffers(VkQueue queue, glm::mat4 &invPerspecti
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 		&uniformBuffers,
 		sizeof(uboParams));
-
-	updateUniformBufferMatrices(invPerspective);
-
+	uboParams.modle = glm::mat4(1.0);
+	uboParams.resolution = glm::vec2(1280.0, 720.0);
+	glm::mat4 view = glm::lookAt(glm::vec3(0.0,0.0,0.), eye, glm::vec3(0.,1.0,0.0));
+	
+	glm::mat4 pro = glm::perspective(glm::radians(60.f), 1280.0f/ 720.0f, 0.1f, 1000.f);
+	
+	glm::mat4 inpv = pro * view;
+	updateUniformBufferMatrices(inpv, eye);
 }
 
-void RayTracingPass::updateUniformBufferMatrices(glm::mat4 &invPerspective)
+void RayTracingPass::updateUniformBufferMatrices(glm::mat4 &invPerspective, glm::vec3 &cameraPos)
 {
-	glm::vec4 t4 = glm::vec4(2.0f, 1.0f, 3.0f, 1.0f);
-
+	std::default_random_engine rndEngine(0);
+	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 	glm::mat4 invp = glm::inverse(invPerspective);
 
-	t4 = invPerspective * t4;
+	uboParams.invpv = invp;
+	uboParams.cameraPos = cameraPos;
 
-	t4.x /= t4.w;
-	t4.y /= t4.w;
-	t4.z /= t4.w;
-	t4.w /= t4.w;
-	uboParams.uWorldExtent = glm::vec3(t4.x, t4.y, -t4.z);
-	uboParams.invProjection = invPerspective;
-
+	uboParams.rand = glm::vec2(rndDist(rndEngine), rndDist(rndEngine));
 	VK_CHECK_RESULT(uniformBuffers.map());
 	uniformBuffers.copyTo(&uboParams, sizeof(uboParams));
 	uniformBuffers.unmap();

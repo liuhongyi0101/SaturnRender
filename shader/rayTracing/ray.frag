@@ -7,21 +7,20 @@ layout (binding = 0) uniform UBO
 {
     mat4 model, invpv;
     vec3 eye;
-    vec2 resolution, rand;
-    float atom_roughness, coffee_roughness;
-    float light_radius, light_intensity, light_angle;
-    float focal_plane, focal_length;
-    float randsize;
-    bool antialias;
-    int bounces;
-    mat4 perspective;
-    
+    vec2 rand;
 } ubo;
-
+  float atom_roughness = 0.0;
+  float coffee_roughness = 0.0;
+  float light_radius = 4.0;
+  float light_intensity = 4.1;
+  float light_angle = 4.73;
+  int bounces = 3;
+  float focal_plane = 3.0;
+  float focal_length = 0.1;
+  vec2 resolution = vec2(1280.,720.);
 layout (binding = 1) uniform sampler2D source;
 layout (binding = 2) uniform sampler2D tRand2Uniform;
-layout (binding = 3) uniform sampler2D tRand2Normal;
-layout (binding = 4) uniform sampler2D tRand3Normal;
+layout (binding = 3) uniform sampler2D tRand3Normal;
 
 layout (location = 0) in vec2 inUV;
 layout (location = 0) out vec4 outFragColor;
@@ -76,19 +75,19 @@ void buildMolecule() {
 vec2 randState = vec2(0);
 
 vec2 rand2Uniform() {
-  vec2 r2 = texture(tRand2Uniform, gl_FragCoord.xy/ubo.randsize + ubo.rand.xy + randState).ba;
+  vec2 r2 = texture(tRand2Uniform, inUV + ubo.rand.xy + randState).ba;
   randState += r2;
   return r2;
 }
 
 vec2 rand2Normal() {
-  vec2 r2 = texture(tRand2Normal, gl_FragCoord.xy/ubo.randsize + ubo.rand.xy + randState).ba;
+  vec2 r2 = texture(tRand2Uniform, inUV + ubo.rand.xy + randState).rg;
   randState += r2;
   return r2;
 }
 
 vec3 rand3Normal() {
-  vec3 r3 = texture(tRand3Normal, gl_FragCoord.xy/ubo.randsize + ubo.rand.xy + randState).rgb;
+  vec3 r3 = texture(tRand3Normal, inUV + ubo.rand.xy + randState).rgb;
   randState == r3.xy;
   return r3;
 }
@@ -104,7 +103,7 @@ bool raySphereIntersect(vec3 r0, vec3 rd, vec3 s0, float sr, out float t) {
   return t >= 0.0;
 }
 
-vec3 lightPos = vec3(cos(ubo.light_angle) * 8.0, 8, sin(ubo.light_angle) * 8.0);
+vec3 lightPos = vec3(cos(light_angle) * 8.0, 8, sin(light_angle) * 8.0);
 const vec3 lightCol = vec3(1,1,0.5) * 6.0;
 const vec3 ambient = vec3(0.01);
 
@@ -118,7 +117,7 @@ bool intersect(vec3 r0, vec3 rd, out vec3 pos, out vec3 norm, out vec3 color, ou
         tmin = t;
         pos = r0 + rd * t;
         norm = normalize(pos - s);
-        roughness = ubo.atom_roughness;
+        roughness = atom_roughness;
         color += atoms[i].element.color;
         light = false;
         hit = true;
@@ -132,11 +131,11 @@ bool intersect(vec3 r0, vec3 rd, out vec3 pos, out vec3 norm, out vec3 color, ou
     pos = r0 + rd * t;
     norm = vec3(0,1,0);
     color = vec3(1, 0.90, 0.6125) * 0.25;
-    roughness = ubo.coffee_roughness;
+    roughness = coffee_roughness;
     light = false;
     hit = true;
   }
-  if (raySphereIntersect(r0, rd, lightPos, ubo.light_radius, t)) {
+  if (raySphereIntersect(r0, rd, lightPos, light_radius, t)) {
     if (t < tmin) {
       tmin = t;
       pos = r0 + rd * t;
@@ -155,25 +154,25 @@ bool intersect(vec3 r0, vec3 rd, out vec3 pos, out vec3 norm, out vec3 color, ou
 void main() {
   buildMolecule();
 
-  vec3 src = texture(source, gl_FragCoord.xy/ubo.resolution).rgb;
+  vec3 src = texture(source, inUV).rgb;
   vec2 jitter = vec2(0.2);
-  if (ubo.antialias) {
-    jitter = rand2Uniform() - 0.5;
-  }
-  vec2 px = 2.0 * (gl_FragCoord.xy + jitter)/ubo.resolution - 1.0;
+
+       jitter = rand2Uniform() - 0.5;
+  vec2 px = 2.0 * inUV - 1.0;
+
   vec3 ray = vec3(ubo.invpv * vec4(px, 1, 1));
   ray = normalize(ray);
 
-  float t_fp = (ubo.focal_plane - ubo.eye.z)/ray.z;
+  float t_fp = (focal_plane - ubo.eye.z)/ray.z;
   vec3 p_fp = ubo.eye + t_fp * ray;
-  vec3 pos = ubo.eye + ubo.focal_length * vec3(rand2Normal() * rand2Uniform().x, 0);
+  vec3 pos = ubo.eye + focal_length * vec3(rand2Normal() * rand2Uniform().x, 0);
   ray = normalize(p_fp - pos);
 
   vec3 accum = vec3(0);
   vec3 mask = vec3(1);
 
   for (int i = 0; i < 20; i++) {
-    if (i > ubo.bounces) break;
+    if (i > bounces) break;
     vec3 norm, color;
     float roughness;
     bool light;
@@ -188,12 +187,12 @@ void main() {
     mask *= color;
     vec3 _v3;
     float _f;
-    vec3 lp = lightPos + rand3Normal() * ubo.light_radius;
+    vec3 lp = lightPos + rand3Normal() * light_radius;
     vec3 lray = normalize(lp - pos);
     if (intersect(pos + lray * 0.0001, lray, _v3, _v3, _v3, _f, light) && light) {
       float d = clamp(dot(norm, lray), 0.0, 1.0);
-      d *= pow(asin(ubo.light_radius/distance(pos, lightPos)), 2.0);
-      accum += d * ubo.light_intensity * lightCol * mask;
+      d *= pow(asin(light_radius/distance(pos, lightPos)), 2.0);
+      accum += d * light_intensity * lightCol * mask;
     }
     ray = normalize(mix(reflect(ray, norm), norm + rand3Normal(), roughness));
     pos = pos + 0.1 * ray;

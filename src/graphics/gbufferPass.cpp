@@ -167,8 +167,8 @@ void GbufferPass::createPipeline(VkPipelineVertexInputStateCreateInfo &vertexInp
 	colorBlendState.attachmentCount = static_cast<uint32_t>(blendAttachmentStates.size());
 	colorBlendState.pAttachments = blendAttachmentStates.data();
 
-	shaderStages[0] = loadShader(getAssetPath + std::string("ssao/gbuffer.vert.spv"), VK_SHADER_STAGE_VERTEX_BIT, device, shaderModules);
-	shaderStages[1] = loadShader(getAssetPath + std::string("ssao/gbuffer.frag.spv"), VK_SHADER_STAGE_FRAGMENT_BIT, device, shaderModules);
+	shaderStages[0] = loadShader(getAssetPath + std::string("gbuffer/gbuffer.vert.spv"), VK_SHADER_STAGE_VERTEX_BIT, device, shaderModules);
+	shaderStages[1] = loadShader(getAssetPath + std::string("gbuffer/gbuffer.frag.spv"), VK_SHADER_STAGE_FRAGMENT_BIT, device, shaderModules);
 
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipeline));
 	
