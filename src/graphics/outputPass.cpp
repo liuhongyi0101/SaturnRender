@@ -110,7 +110,8 @@ void OutputPass::createDescriptorsLayouts()
 	VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo;
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo();
 	setLayoutBindings = {
-			vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0),						// FS Position+Depth
+			vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0),	
+			vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1),
 			
 	};
 	setLayoutCreateInfo = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
@@ -156,22 +157,33 @@ void OutputPass::createPipeline()
 }
 void OutputPass::createUniformBuffers(VkQueue queue)
 {
+	vulkanDevice->createBuffer(
+		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		&uniformBuffers,
+		sizeof(uboParams));
+	uboParams.count = 0;
+	updateUniformBufferMatrices();
 }
-void OutputPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool, std::vector<VkDescriptorImageInfo> &texDescriptor)
+void OutputPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool, VkDescriptorImageInfo &texDescriptor)
 {
 	VkDescriptorSetAllocateInfo descriptorAllocInfo = vks::initializers::descriptorSetAllocateInfo(descriptorPool, nullptr, 1);
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
 	descriptorAllocInfo.pSetLayouts = &descriptorSetLayout;
 	VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &descriptorAllocInfo, &descriptorSet));
 	writeDescriptorSets = {
-		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &texDescriptor[0]),	// final color
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &texDescriptor),	
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, &uniformBuffers.descriptor),
 	
 	};
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
 }
 void OutputPass::updateUniformBufferMatrices()
 {
-
+	uboParams.count++;
+	VK_CHECK_RESULT(uniformBuffers.map());
+	uniformBuffers.copyTo(&uboParams, sizeof(uboParams));
+	uniformBuffers.unmap();
 }
 
 void OutputPass::buildCommandBuffer(VkCommandBuffer &cmdBuffer,uint32_t width, uint32_t height)

@@ -11,22 +11,22 @@ RayTracingPass::~RayTracingPass()
 }
 void RayTracingPass::createNoiseTex(VkQueue queue)
 {
-	const int width = 1280;
-	const int heigt = 720;
+	const int width = 1024;
+	const int heigt = 1024;
 	std::default_random_engine rndEngine(0);
 	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 	std::vector<glm::vec4> noise(width * heigt);
 	for (uint32_t i = 0; i < static_cast<uint32_t>(noise.size()); i++)
 	{
-		noise[i] = glm::vec4(rndDist(rndEngine) , rndDist(rndEngine) , rndDist(rndEngine) , rndDist(rndEngine) );
+		noise[i] = glm::vec4(rndDist(rndEngine) , rndDist(rndEngine) , 2.0*rndDist(rndEngine)-1.0 , 2.0*rndDist(rndEngine) - 1.0);
 	}
-	randVec2Tex.fromBuffer(noise.data(), noise.size() * sizeof(glm::vec4), VK_FORMAT_B8G8R8A8_UNORM, width, heigt, vulkanDevice, queue, VK_FILTER_NEAREST);
-	std::vector<glm::vec4> noiseVec3(width * heigt);
+	randVec2Tex.fromBuffer(noise.data(), noise.size() * sizeof(glm::vec4), VK_FORMAT_R32G32B32A32_SFLOAT, width, heigt, vulkanDevice, queue, VK_FILTER_NEAREST);
+	std::vector<glm::vec3> noiseVec3(width * heigt);
 	for (uint32_t i = 0; i < static_cast<uint32_t>(noiseVec3.size()); i++)
 	{
-		noiseVec3[i] = glm::vec4(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine) ,0.0);
+		noiseVec3[i] = glm::vec3(2.0*rndDist(rndEngine) - 1.0, 2.0*rndDist(rndEngine) - 1.0, 2.0*rndDist(rndEngine) - 1.0);
 	}
-	randVec3Tex.fromBuffer(noiseVec3.data(), noiseVec3.size() * sizeof(glm::vec4), VK_FORMAT_B8G8R8A8_UNORM, width, heigt, vulkanDevice, queue, VK_FILTER_NEAREST);
+	randVec3Tex.fromBuffer(noiseVec3.data(), noiseVec3.size() * sizeof(glm::vec3), VK_FORMAT_R32G32B32_SFLOAT, width, heigt, vulkanDevice, queue, VK_FILTER_NEAREST);
 }
 
 void RayTracingPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  height)
@@ -133,7 +133,7 @@ void RayTracingPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  h
 	pingpongDescriptor[ping-1] = vks::initializers::descriptorImageInfo(colorSampler, pingpong[ping-1].rtAttachment.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
-void RayTracingPass::createDescriptorsLayouts()
+void RayTracingPass::createDescriptorsLayouts(VkDescriptorPool &descriptorPool)
 {
 	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
 	VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo;
@@ -153,6 +153,11 @@ void RayTracingPass::createDescriptorsLayouts()
 	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
 	VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 
+
+	VkDescriptorSetAllocateInfo descriptorAllocInfo = vks::initializers::descriptorSetAllocateInfo(descriptorPool, nullptr, 1);
+
+	descriptorAllocInfo.pSetLayouts = &descriptorSetLayout;
+	VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &descriptorAllocInfo, &descriptorSet));
 }
 void RayTracingPass::createPipeline()
 {
@@ -192,15 +197,11 @@ void RayTracingPass::createPipeline()
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipeline));
 
 }
-void RayTracingPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool)
+void RayTracingPass::wirteDescriptorSets()
 {
-	VkDescriptorSetAllocateInfo descriptorAllocInfo = vks::initializers::descriptorSetAllocateInfo(descriptorPool, nullptr, 1);
-	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-	descriptorAllocInfo.pSetLayouts = &descriptorSetLayout;
-	VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &descriptorAllocInfo, &descriptorSet));
 	writeDescriptorSets = {
 		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.descriptor),
-		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1 , &pingpongDescriptor[ping - 1]),
+		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1 , &pingpongDescriptor[1-ping]),
 		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2 , &randVec2Tex.descriptor),
 		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3 , &randVec3Tex.descriptor),
 	};
@@ -215,8 +216,8 @@ void RayTracingPass::createUniformBuffers(VkQueue queue, glm::mat4 &invPerspecti
 		&uniformBuffers,
 		sizeof(uboParams));
 	uboParams.modle = glm::mat4(1.0);
-	uboParams.resolution = glm::vec2(1280.0, 720.0);
-	glm::mat4 view = glm::lookAt(glm::vec3(0.0,0.0,0.), eye, glm::vec3(0.,1.0,0.0));
+
+	glm::mat4 view = glm::lookAt( eye, glm::vec3(0.0, 0.0, 0.),glm::vec3(0.0,1.0,0.0));
 	
 	glm::mat4 pro = glm::perspective(glm::radians(60.f), 1280.0f/ 720.0f, 0.1f, 1000.f);
 	
@@ -233,6 +234,15 @@ void RayTracingPass::updateUniformBufferMatrices(glm::mat4 &invPerspective, glm:
 	uboParams.invpv = invp;
 	uboParams.cameraPos = cameraPos;
 
+	uboParams.rand = glm::vec2(rndDist(rndEngine), rndDist(rndEngine));
+	VK_CHECK_RESULT(uniformBuffers.map());
+	uniformBuffers.copyTo(&uboParams, sizeof(uboParams));
+	uniformBuffers.unmap();
+}
+void RayTracingPass::updateUniformBufferMatrices()
+{
+	std::default_random_engine rndEngine(0);
+	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 	uboParams.rand = glm::vec2(rndDist(rndEngine), rndDist(rndEngine));
 	VK_CHECK_RESULT(uniformBuffers.map());
 	uniformBuffers.copyTo(&uboParams, sizeof(uboParams));
@@ -267,5 +277,13 @@ void RayTracingPass::buildCommandBuffer(VkCommandBuffer &cmdBuffer)
 
 	vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
 	vkCmdEndRenderPass(cmdBuffer);
+
+}
+
+void RayTracingPass::updateCommandBuffer(VkCommandBuffer &cmdBuffer)
+{
+
+
+
 
 }

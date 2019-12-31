@@ -11,7 +11,7 @@ public:
 	 void createFrameBuffer(VulkanSwapChain &swapChain,uint32_t width, uint32_t height,VkCommandPool cmdpool);
 	 void createPipeline();
 	 void createDescriptorsLayouts();
-	 void wirteDescriptorSets(VkDescriptorPool &descriptorPool, std::vector<VkDescriptorImageInfo> &texDescriptor);
+	 void wirteDescriptorSets(VkDescriptorPool &descriptorPool, VkDescriptorImageInfo &texDescriptor);
 	 void createUniformBuffers(VkQueue queue);
 	 void updateUniformBufferMatrices();
 	 void buildCommandBuffer(VkCommandBuffer& cmdBuffer, uint32_t width, uint32_t height);
@@ -24,5 +24,9 @@ public:
 	std::vector<VkFramebuffer>frameBuffers;
 
 private:
+	struct UBOParams {
+		float count;
+	} uboParams;
+	vks::Buffer uniformBuffers;
 
 };

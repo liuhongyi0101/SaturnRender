@@ -172,7 +172,15 @@
 			glm::vec4 light = camera.matrices.view * descriptorSets->uboParams.lights[0];
 			deferredShading->updateUniformBufferMatrices(light);
 		}
-			
+		
+		rayTracingPass->updateUniformBufferMatrices();
+		rayTracingPass->wirteDescriptorSets();
+		graphicCommand->startRecordCmd();
+		rayTracingPass->buildCommandBuffer(graphicCommand->cmdBuffer);
+		graphicCommand->stopRecordCmd();
+		rayTracingPass->ping = 1 - rayTracingPass->ping;
+
+		outputPass->updateUniformBufferMatrices();
 		uiComponents.frameTimer = frameTimer;
 		uiComponents.lastFPS = lastFPS;
 		uiComponents.mousePos = mousePos;
@@ -261,16 +269,15 @@
 		skyboxPass->buildCommandBuffer(graphicCommand->cmdBuffer);
 		vkCmdEndRenderPass(graphicCommand->cmdBuffer);
 		bloomFFT->buildComputeCommandBuffer();
-		imageDescriptors = {
-			vks::initializers::descriptorImageInfo(deferredShading->colorSampler, deferredShading->deferredShadingRtFrameBuffer.deferredShadingRtAttachment.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-		};
-		outputPass->wirteDescriptorSets(descriptorSets->descriptorPool, imageDescriptors);
-		
+	
 		// ssr
 	//	ssrPass->buildCommandBuffer(ssaoPass->cmdBuffer);
 		rayTracingPass->buildCommandBuffer(graphicCommand->cmdBuffer);
 		graphicCommand->stopRecordCmd();
-
+		imageDescriptors = {
+		vks::initializers::descriptorImageInfo(deferredShading->colorSampler, deferredShading->deferredShadingRtFrameBuffer.deferredShadingRtAttachment.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+		};
+		outputPass->wirteDescriptorSets(descriptorSets->descriptorPool, rayTracingPass->pingpongDescriptor[rayTracingPass->ping]);
 		outputPass->buildCommandBuffer(graphicCommand->cmdBuffer, width, height);
 	}
 	void Renderer::loadModule() {
@@ -293,6 +300,7 @@
 		outputPass->createFrameBuffer(swapChain, width, height,cmdPool);
 		outputPass->createDescriptorsLayouts();
 		outputPass->createPipeline();
+		outputPass->createUniformBuffers(queue);
 
 
 		uiinfo.colorFormat = swapChain.colorFormat;
@@ -370,9 +378,9 @@
 
 		rayTracingPass->createNoiseTex(queue);
 		rayTracingPass->createFramebuffersAndRenderPass(width,height);
-		rayTracingPass->createDescriptorsLayouts();
+		rayTracingPass->createDescriptorsLayouts(descriptorSets->descriptorPool);
 		rayTracingPass->createPipeline();
 		rayTracingPass->createUniformBuffers(queue, camera.matrices.perspective *camera.matrices.view, camera.position);
-		rayTracingPass->wirteDescriptorSets(descriptorSets->descriptorPool);
+		rayTracingPass->wirteDescriptorSets();
 	}
 
