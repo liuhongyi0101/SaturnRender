@@ -179,7 +179,7 @@
 		rayTracingPass->buildCommandBuffer(graphicCommand->cmdBuffer);
 		graphicCommand->stopRecordCmd();
 		rayTracingPass->ping = 1 - rayTracingPass->ping;
-
+		
 		outputPass->updateUniformBufferMatrices();
 		uiComponents.frameTimer = frameTimer;
 		uiComponents.lastFPS = lastFPS;

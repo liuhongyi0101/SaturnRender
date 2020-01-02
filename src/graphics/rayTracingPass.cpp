@@ -1,5 +1,6 @@
 #include "graphics/rayTracingPass.h"
 #include "utils/loadshader.h"
+#include <ctime>
 RayTracingPass::RayTracingPass(vks::VulkanDevice * vulkanDevice)
 {
 	this->vulkanDevice = vulkanDevice;
@@ -11,20 +12,22 @@ RayTracingPass::~RayTracingPass()
 }
 void RayTracingPass::createNoiseTex(VkQueue queue)
 {
-	const int width = 1024;
-	const int heigt = 1024;
+	const int width = 1280;
+	const int heigt = 720;
 	std::default_random_engine rndEngine(0);
 	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 	std::vector<glm::vec4> noise(width * heigt);
 	for (uint32_t i = 0; i < static_cast<uint32_t>(noise.size()); i++)
 	{
-		noise[i] = glm::vec4(rndDist(rndEngine) , rndDist(rndEngine) , 2.0*rndDist(rndEngine)-1.0 , 2.0*rndDist(rndEngine) - 1.0);
+		noise[i] = glm::vec4((rand() % 10) / 10., (rand() % 10) / 10., 2.0*((rand() % 10) / 10.) -1.0 , 2.0*((rand() % 10) / 10.) - 1.0);
 	}
 	randVec2Tex.fromBuffer(noise.data(), noise.size() * sizeof(glm::vec4), VK_FORMAT_R32G32B32A32_SFLOAT, width, heigt, vulkanDevice, queue, VK_FILTER_NEAREST);
+
+
 	std::vector<glm::vec3> noiseVec3(width * heigt);
 	for (uint32_t i = 0; i < static_cast<uint32_t>(noiseVec3.size()); i++)
 	{
-		noiseVec3[i] = glm::vec3(2.0*rndDist(rndEngine) - 1.0, 2.0*rndDist(rndEngine) - 1.0, 2.0*rndDist(rndEngine) - 1.0);
+		noiseVec3[i] = glm::vec3(2.0*((rand() % 10) / 10.) - 1.0, 2.0*((rand() % 10) / 10.) - 1.0, 2.0*((rand() % 10) / 10.) - 1.0);
 	}
 	randVec3Tex.fromBuffer(noiseVec3.data(), noiseVec3.size() * sizeof(glm::vec3), VK_FORMAT_R32G32B32_SFLOAT, width, heigt, vulkanDevice, queue, VK_FILTER_NEAREST);
 }
@@ -38,8 +41,8 @@ void RayTracingPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  h
 	pingpong[ping].setSize(width, height);
 	pingpong[ping-1].setSize(width, height);
 
-	createAttachment(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &pingpong[ping].rtAttachment, width, height);
-	createAttachment(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &pingpong[ping-1].rtAttachment, width, height);
+	createAttachment(VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &pingpong[ping].rtAttachment, width, height);
+	createAttachment(VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &pingpong[ping-1].rtAttachment, width, height);
 	// Render passes
 
 	{
@@ -227,12 +230,12 @@ void RayTracingPass::createUniformBuffers(VkQueue queue, glm::mat4 &invPerspecti
 
 void RayTracingPass::updateUniformBufferMatrices(glm::mat4 &invPerspective, glm::vec3 &cameraPos)
 {
-	std::default_random_engine rndEngine(0);
+	std::default_random_engine rndEngine(time(0));
 	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 	glm::mat4 invp = glm::inverse(invPerspective);
 
 	uboParams.invpv = invp;
-	uboParams.cameraPos = cameraPos;
+	uboParams.cameraPos = glm::vec4(cameraPos,1.0);
 
 	uboParams.rand = glm::vec2(rndDist(rndEngine), rndDist(rndEngine));
 	VK_CHECK_RESULT(uniformBuffers.map());
@@ -241,7 +244,7 @@ void RayTracingPass::updateUniformBufferMatrices(glm::mat4 &invPerspective, glm:
 }
 void RayTracingPass::updateUniformBufferMatrices()
 {
-	std::default_random_engine rndEngine(0);
+	std::default_random_engine rndEngine(time(0));
 	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 	uboParams.rand = glm::vec2(rndDist(rndEngine), rndDist(rndEngine));
 	VK_CHECK_RESULT(uniformBuffers.map());

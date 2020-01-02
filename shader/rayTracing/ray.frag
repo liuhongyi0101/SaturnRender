@@ -6,7 +6,7 @@
 layout (binding = 0) uniform UBO 
 {
     mat4 model, invpv;
-    vec3 eye;
+    vec4 eye;
     vec2 rand;
 } ubo;
   float atom_roughness = 0.0;
@@ -76,19 +76,19 @@ void buildMolecule() {
 vec2 randState = vec2(0);
 
 vec2 rand2Uniform() {
-  vec2 r2 = texture(tRand2Uniform,  gl_FragCoord.xy/randsize + ubo.rand.xy + randState).bg;
+  vec2 r2 = texture(tRand2Uniform,  inUV + ubo.rand.xy + randState).rg;
   randState += r2;
-  return r2;
+  return ubo.rand.xy;
 }
 
 vec2 rand2Normal() {
-  vec2 r2 = texture(tRand2Uniform,  gl_FragCoord.xy/randsize + ubo.rand.xy + randState).ar;
+  vec2 r2 = texture(tRand2Uniform,  inUV + ubo.rand.xy + randState).ba;
   randState += r2;
-  return r2;
+  return ubo.rand.xy;
 }
 
 vec3 rand3Normal() {
-  vec3 r3 = texture(tRand3Normal,  gl_FragCoord.xy/randsize + ubo.rand.xy + randState).rgb;
+  vec3 r3 = texture(tRand3Normal,  inUV + ubo.rand.xy + randState).rgb;
   randState == r3.xy;
   return r3;
 }
@@ -161,9 +161,9 @@ void main() {
   // vec2 px = 2.0 * (inUV +jitter/resolution) - 1.0;
 
   vec3 src = texture(source, inUV).rgb;
-  vec2 jitter = vec2(0);
+  vec2 jitter = vec2(0.1);
   
-    jitter = rand2Uniform() - 0.5;
+    jitter = rand2Uniform() -0.5;
   
   vec2 px = (inUV+jitter/resolution)*2.0-1.0 ;
   px.y *=-1;
@@ -171,8 +171,8 @@ void main() {
   ray = normalize(ray);
 
   float t_fp = (focal_plane - ubo.eye.z)/ray.z;
-  vec3 p_fp = ubo.eye + t_fp * ray;
-  vec3 pos = ubo.eye + focal_length * vec3(rand2Normal() * rand2Uniform().x, 0);
+  vec3 p_fp = ubo.eye.xyz + t_fp * ray;
+  vec3 pos = ubo.eye.xyz + focal_length * vec3(rand2Normal() * rand2Uniform().y, 0);
   ray = normalize(p_fp - pos);
 
   vec3 accum = vec3(0);
@@ -204,6 +204,6 @@ void main() {
     ray = normalize(mix(reflect(ray, norm), norm + rand3Normal(), roughness));
     pos = pos + 0.1 * ray;
   }
-
+  
   outFragColor = vec4((accum +src), 1.0);
 }

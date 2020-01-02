@@ -26,7 +26,7 @@ private:
 	struct UBOParams {
 		glm::mat4 modle;
 		glm::mat4 invpv;
-		glm::vec3 cameraPos;
+		glm::vec4 cameraPos;
 		glm::vec2 rand;
 	} uboParams;
 	std::array <RtFrameBuffer,2> pingpong;
