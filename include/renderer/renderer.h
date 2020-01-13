@@ -1,6 +1,6 @@
 #pragma once
 #include "renderer/sceneGraph.h"
-#include "bobject/material.h"
+#include "object/material.h"
 #include "renderer/descriptor.h"
 #include "renderer/vertexDescriptions.h"
 #include "renderer/pipeline.h"

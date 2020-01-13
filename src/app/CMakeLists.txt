@@ -1,6 +1,6 @@
 ﻿# Function for building single example
 
-set(APP blade)
+set(APP saturnRender)
 
 include_directories(${MAIN_DIR}/external)
 include_directories(${MAIN_DIR}/external/glm)

@@ -10,7 +10,7 @@ cmake_policy(VERSION 3.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
 # Setting the name of project
-set(NAME blade)
+set(NAME SaturnRender)
 project(${NAME})
 
 # Open the 64 bit system
@@ -143,10 +143,6 @@ endif(RESOURCE_INSTALL_DIR)
 
 # log
 add_definitions(-DAUTO_INITIALIZE_EASYLOGGINGPP)
-
-# external libraries
-# add_subdirectory(external/base)
-# add_subdirectory(external/zlib)
 
 # main models
 add_subdirectory(src)

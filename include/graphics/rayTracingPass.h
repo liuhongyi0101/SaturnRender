@@ -39,6 +39,4 @@ private:
 	
 	glm::vec3 eye = glm::vec3(0., 0., 10.0);
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-	void updateCommandBuffer(VkCommandBuffer &cmdBuffer);
-	
 };

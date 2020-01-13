@@ -271,7 +271,7 @@
 		bloomFFT->buildComputeCommandBuffer();
 	
 		// ssr
-	//	ssrPass->buildCommandBuffer(ssaoPass->cmdBuffer);
+	//	ssrPass->buildCommandBuffer(graphicCommand->cmdBuffer);
 		rayTracingPass->buildCommandBuffer(graphicCommand->cmdBuffer);
 		graphicCommand->stopRecordCmd();
 		imageDescriptors = {

@@ -16,7 +16,7 @@ layout (binding = 0) uniform UBO
   float light_angle = 4.73;
   int bounces = 6;
   float focal_plane = 3.0;
-  float focal_length = 0.2;
+  float focal_length = 0.1;
   vec2 resolution = vec2(1280.,720.);
   vec2 randsize = vec2(1024.,1024.);
 layout (binding = 1) uniform sampler2D source;
@@ -112,7 +112,7 @@ bool intersect(vec3 r0, vec3 rd, out vec3 pos, out vec3 norm, out vec3 color, ou
   float tmin = 1e38, t;
   bool hit = false;
   for (int i = 0; i < 24; i++) {
-    vec3 s = vec3( vec4(atoms[i].position, 1));
+    vec3 s = vec3(ubo.model * vec4(atoms[i].position, 1));
     if (raySphereIntersect(r0, rd, s, atoms[i].element.radius * 1.2, t)) {
       if (t < tmin) {
         tmin = t;

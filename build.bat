@@ -16,7 +16,7 @@ REM // See the License for the specific language governing permissions and
 REM // limitations under the License.
 REM /////////////////////////////////////////////////////////////////////////////////////////////
 
-echo Preparing 'blade' solution...
+echo Preparing 'SaturnRender' solution...
 mkdir build
 cd build
 

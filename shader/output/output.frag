@@ -16,6 +16,8 @@ void main()
 {
 
     vec4 color =  texture(sceneColor, inUV)/ubo.count;
+
+    color.rgb = pow(color.rgb,vec3(0.45));
         outFragColor =color; 
 }
 

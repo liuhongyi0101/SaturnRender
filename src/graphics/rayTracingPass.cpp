@@ -194,7 +194,7 @@ void RayTracingPass::createPipeline()
 	colorBlendState.attachmentCount = static_cast<uint32_t>(blendAttachmentStates.size());
 	colorBlendState.pAttachments = blendAttachmentStates.data();
 
-	shaderStages[0] = loadShader(getAssetPath + std::string("ssr/ssr.vert.spv"), VK_SHADER_STAGE_VERTEX_BIT, device, shaderModules);
+	shaderStages[0] = loadShader(getAssetPath + std::string("common/fullscreen.vert.spv"), VK_SHADER_STAGE_VERTEX_BIT, device, shaderModules);
 	shaderStages[1] = loadShader(getAssetPath + std::string("rayTracing/ray.frag.spv"), VK_SHADER_STAGE_FRAGMENT_BIT, device, shaderModules);
 
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, 0, 1, &pipelineCreateInfo, nullptr, &pipeline));
@@ -217,9 +217,17 @@ void RayTracingPass::createUniformBuffers(VkQueue queue, glm::mat4 &invPerspecti
 		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 		&uniformBuffers,
-		sizeof(uboParams));
+		sizeof(uboParams)); 
 	uboParams.modle = glm::mat4(1.0);
-
+	uboParams.modle[0][0] = 0.86;
+	uboParams.modle[0][1] = 0.34;
+	uboParams.modle[0][2] = 0.34;
+	uboParams.modle[1][0] = 0.31;
+	uboParams.modle[1][1] = 0.16;
+	uboParams.modle[1][2] = -0.93;
+	uboParams.modle[2][0] = -0.38;
+	uboParams.modle[2][1] = 0.92;
+	uboParams.modle[2][2] = 0.03;
 	glm::mat4 view = glm::lookAt( eye, glm::vec3(0.0, 0.0, 0.),glm::vec3(0.0,1.0,0.0));
 	
 	glm::mat4 pro = glm::perspective(glm::radians(60.f), 1280.0f/ 720.0f, 0.1f, 1000.f);
@@ -231,7 +239,7 @@ void RayTracingPass::createUniformBuffers(VkQueue queue, glm::mat4 &invPerspecti
 void RayTracingPass::updateUniformBufferMatrices(glm::mat4 &invPerspective, glm::vec3 &cameraPos)
 {
 	std::default_random_engine rndEngine(time(0));
-	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
+	std::uniform_real_distribution<float> rndDist(-1.0f, 1.0f);
 	glm::mat4 invp = glm::inverse(invPerspective);
 
 	uboParams.invpv = invp;
@@ -245,8 +253,8 @@ void RayTracingPass::updateUniformBufferMatrices(glm::mat4 &invPerspective, glm:
 void RayTracingPass::updateUniformBufferMatrices()
 {
 	std::default_random_engine rndEngine(time(0));
-	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
-	uboParams.rand = glm::vec2(rndDist(rndEngine), rndDist(rndEngine));
+	std::uniform_real_distribution<float> rndDist(-1.0f, 1.0f);
+	uboParams.rand = glm::vec2(((rand() % 10) / 10.), ((rand() % 10) / 10.));
 	VK_CHECK_RESULT(uniformBuffers.map());
 	uniformBuffers.copyTo(&uboParams, sizeof(uboParams));
 	uniformBuffers.unmap();
@@ -280,13 +288,5 @@ void RayTracingPass::buildCommandBuffer(VkCommandBuffer &cmdBuffer)
 
 	vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
 	vkCmdEndRenderPass(cmdBuffer);
-
-}
-
-void RayTracingPass::updateCommandBuffer(VkCommandBuffer &cmdBuffer)
-{
-
-
-
 
 }

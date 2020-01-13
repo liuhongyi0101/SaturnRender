@@ -4,7 +4,7 @@
 #include "VulkanTools.h"
 #include "VulkanInitializers.hpp"
 #include "VulkanTexture.hpp"
-#include "bobject/material.h"
+#include "object/material.h"
 class Descriptor
 {
 public:

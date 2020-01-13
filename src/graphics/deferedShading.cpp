@@ -260,5 +260,4 @@ void DeferredShading::buildCommandBuffer(VkCommandBuffer &cmdBuffer)
 
 	vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
 	
-
 }

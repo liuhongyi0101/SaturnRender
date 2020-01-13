@@ -3,7 +3,7 @@
 #include "VulkanDevice.hpp"
 #include "VulkanTools.h"
 #include "VulkanInitializers.hpp"
-#include "bobject/material.h"
+#include "object/material.h"
 #include "utils/loadasset.h"
 #include "renderer/pipeline.h"
 struct renderpassUnit {
