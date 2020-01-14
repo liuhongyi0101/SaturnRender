@@ -1,5 +1,5 @@
 #include "graphics/forwardPass.h"
-
+#include "utils/loadshader.h"
 ForwardPass::ForwardPass(vks::VulkanDevice * vulkanDevice)
 {
 	this->vulkanDevice = vulkanDevice;
@@ -23,10 +23,10 @@ void ForwardPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  heig
 	assert(validDepthFormat);
 
 	
-	createAttachment(VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &forwardFrameBuffers.color, width, height);	// Position + Depth
-		
-	createAttachment(attDepthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, &forwardFrameBuffers.depth, width, height);			// Depth
-
+	createAttachment(VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &pingpongRT[ping].color, width, height);
+	createAttachment(VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &pingpongRT[1-ping].color, width, height);
+	createAttachment(attDepthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, &pingpongRT[ping].depth, width, height);			
+	createAttachment(attDepthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, &pingpongRT[1-ping].depth, width, height);
 	// Render passes
 	{
 		std::array<VkAttachmentDescription, 2> attachmentDescs = {};
@@ -43,15 +43,14 @@ void ForwardPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  heig
 		}
 
 		// Formats
-		attachmentDescs[0].format = forwardFrameBuffers.color.format;
-		
-		attachmentDescs[1].format = forwardFrameBuffers.depth.format;
+		attachmentDescs[0].format = pingpongRT[ping].color.format;
+		attachmentDescs[1].format = pingpongRT[ping].depth.format;
 
 		std::vector<VkAttachmentReference> colorReferences;
 		colorReferences.push_back({ 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 	
 		VkAttachmentReference depthReference = {};
-		depthReference.attachment = 4;
+		depthReference.attachment = 1;
 		depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 		VkSubpassDescription subpass = {};
@@ -89,21 +88,25 @@ void ForwardPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  heig
 		renderPassInfo.pDependencies = dependencies.data();
 		VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
 
-		std::array<VkImageView, 5> attachments;
-		attachments[0] = forwardFrameBuffers.position.view;
-		attachments[1] = forwardFrameBuffers.normal.view;
-		
-		attachments[4] = forwardFrameBuffers.depth.view;
+		std::array<VkImageView, 2> attachments;
+		attachments[0] = pingpongRT[ping].color.view;
+		attachments[1] = pingpongRT[ping].depth.view;
 
 		VkFramebufferCreateInfo fbufCreateInfo = vks::initializers::framebufferCreateInfo();
 		fbufCreateInfo.renderPass = renderPass;
 		fbufCreateInfo.pAttachments = attachments.data();
 		fbufCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-		fbufCreateInfo.width = forwardFrameBuffers.width;
-		fbufCreateInfo.height = forwardFrameBuffers.height;
+		fbufCreateInfo.width = pingpongRT[ping].width;
+		fbufCreateInfo.height = pingpongRT[ping].height;
 		fbufCreateInfo.layers = 1;
-		VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbufCreateInfo, nullptr, &forwardFrameBuffers.frameBuffer));
+		VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbufCreateInfo, nullptr, &pingpongRT[ping].frameBuffer));
+
+		attachments[0] = pingpongRT[1-ping].color.view;
+		attachments[1] = pingpongRT[1-ping].depth.view;
+		VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbufCreateInfo, nullptr, &pingpongRT[1-ping].frameBuffer));
+
 	}
+	
 
 	// Shared sampler used for all color attachments
 	VkSamplerCreateInfo sampler = vks::initializers::samplerCreateInfo();
@@ -113,7 +116,7 @@ void ForwardPass::createFramebuffersAndRenderPass(uint32_t width, uint32_t  heig
 	sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	sampler.addressModeV = sampler.addressModeU;
 	sampler.addressModeW = sampler.addressModeU;
-	sampler.mipLodBias = 0.0f;
+	sampler.mipLodBias = -0.5f;
 	sampler.maxAnisotropy = 1.0f;
 	sampler.minLod = 0.0f;
 	sampler.maxLod = 1.0f;
@@ -170,15 +173,12 @@ void ForwardPass::createDescriptorsLayouts(VkDescriptorPool &descriptorPool)
 	VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo;
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo();
 
-	// G-Buffer creation 
 	setLayoutBindings = {
 		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),								// VS UBO
 		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1),
 		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2),
 		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3),
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 4),
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 5),
-		vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 6),
+
 	};
 	setLayoutCreateInfo = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
 	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &setLayoutCreateInfo, nullptr, &descriptorSetLayout));
@@ -199,9 +199,7 @@ void ForwardPass::wirteDescriptorSets(VkDescriptorPool &descriptorPool, std::vec
 		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1 , &texDescriptor[0]),
 		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2 , &texDescriptor[1]),
 		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3 , &texDescriptor[2]),
-		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,4 , &texDescriptor[3]),
-		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,5 , &texDescriptor[4]),
-		vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,6 , &texDescriptor[5]),
+
 	};
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
 
@@ -219,33 +217,27 @@ void ForwardPass::buildCommandBuffer(VkCommandPool cmdPool, VkBuffer vertexBuffe
 	VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
 
 	// Clear values for all attachments written in the fragment sahder
-	std::vector<VkClearValue> clearValues(5);
+	std::vector<VkClearValue> clearValues(2);
 	clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-	clearValues[1].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-	clearValues[2].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-	clearValues[3].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-	clearValues[4].depthStencil = { 1.0f, 0 };
+	clearValues[1].depthStencil = { 1.0f, 0 };
 
 	VkRenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();
 	renderPassBeginInfo.renderPass = renderPass;
-	renderPassBeginInfo.framebuffer = deferredFrameBuffers.frameBuffer;
-	renderPassBeginInfo.renderArea.extent.width = deferredFrameBuffers.width;
-	renderPassBeginInfo.renderArea.extent.height = deferredFrameBuffers.height;
+	renderPassBeginInfo.framebuffer = pingpongRT[ping].frameBuffer;
+	renderPassBeginInfo.renderArea.extent.width = pingpongRT[ping].width;
+	renderPassBeginInfo.renderArea.extent.height = pingpongRT[ping].height;
 	renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassBeginInfo.pClearValues = clearValues.data();
 
 	VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
 
-	/*
-		First pass: Fill G-Buffer components (positions+depth, normals, albedo) using MRT
-	*/
 
 	vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	VkViewport viewport = vks::initializers::viewport((float)deferredFrameBuffers.width, (float)deferredFrameBuffers.height, 0.0f, 1.0f);
+	VkViewport viewport = vks::initializers::viewport((float)pingpongRT[ping].width, (float)pingpongRT[ping].height, 0.0f, 1.0f);
 	vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 
-	VkRect2D scissor = vks::initializers::rect2D(deferredFrameBuffers.width, deferredFrameBuffers.height, 0, 0);
+	VkRect2D scissor = vks::initializers::rect2D(pingpongRT[ping].width, pingpongRT[ping].height, 0, 0);
 	vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
 	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -256,7 +248,7 @@ void ForwardPass::buildCommandBuffer(VkCommandPool cmdPool, VkBuffer vertexBuffe
 	vkCmdEndRenderPass(cmdBuffer);
 	VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
 }
-void ForwardPass::createUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm::mat4 &view, glm::mat4 &lightSpace)
+void ForwardPass::createUniformBuffers(VkQueue queue, glm::mat4 &perspective, glm::mat4 &view, glm::vec3 &lightDir)
 {
 	// Scene matrices
 	vulkanDevice->createBuffer(
@@ -265,15 +257,15 @@ void ForwardPass::createUniformBuffers(VkQueue queue, glm::mat4 &perspective, gl
 		&uniformBuffers.sceneMatrices,
 		sizeof(uboSceneMatrices));
 
-	updateUniformBufferMatrices(perspective, view, lightSpace);
+	updateUniformBufferMatrices(perspective, view, lightDir);
 
 }
-void ForwardPass::updateUniformBufferMatrices(glm::mat4 &perspective, glm::mat4 &view, glm::mat4 &lightSpace)
+void ForwardPass::updateUniformBufferMatrices(glm::mat4 &perspective, glm::mat4 &view, glm::vec3 &lightSpace)
 {
 	uboSceneMatrices.projection = perspective;
 	uboSceneMatrices.view = view;
 	uboSceneMatrices.model = glm::mat4(1.0f);
-	uboSceneMatrices.lightSpace = lightSpace;
+	uboSceneMatrices.lightDir = lightSpace;
 	VK_CHECK_RESULT(uniformBuffers.sceneMatrices.map());
 	uniformBuffers.sceneMatrices.copyTo(&uboSceneMatrices, sizeof(uboSceneMatrices));
 	uniformBuffers.sceneMatrices.unmap();
